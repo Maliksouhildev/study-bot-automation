@@ -1,0 +1,175 @@
+{
+  "name": "Google Meet Study Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "meet-done",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $json.videoPath }}",
+        "options": {}
+      },
+      "id": "2",
+      "name": "Read Binary File",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/audio/transcriptions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "whisper-large-v3"
+            },
+            {
+              "name": "response_format",
+              "value": "json"
+            },
+            {
+              "name": "language",
+              "value": "en"
+            }
+          ]
+        },
+        "sendInputData": true,
+        "inputDataOptions": {
+          "binaryPropertyName": "data"
+        },
+        "options": {}
+      },
+      "id": "3",
+      "name": "Groq Whisper (Transcription)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        650,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_GROQ_CREDENTIAL_ID",
+          "name": "Groq API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a highly intelligent study assistant. Your goal is to analyze the full transcription of an online course and extract specific information precisely. Format your response clearly in Markdown.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Extract the following from this transcription: \\n1. 📚 **Homework/Assignments**: Did the professor talk about any homework? If yes, what?\\n2. 💡 **Tips & Practical Work**: Tips, tricks, and practical work changes for the next session.\\n3. 🚨 **Name Mentions**: Did the professor call the names: Mehdi, Malik, or Souhil? What did they say?\\n4. 🔗 **Resources**: Are there any YouTube video links or resources mentioned? Extract them.\\n5. 📝 **Summary**: Provide a full summary of the course.\\n\\nTranscription:\\n{{ $json.text }}\\n\\nMeeting Duration: {{ $('Webhook').item.json.duration }} seconds.\\nStudent Name: {{ $('Webhook').item.json.studentName }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "4",
+      "name": "Groq Llama 3 (Extraction)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        850,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_GROQ_CREDENTIAL_ID",
+          "name": "Groq API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "your-email@example.com",
+        "subject": "={{ 'Study Summary: ' + $('Webhook').item.json.recordedAt }}",
+        "message": "={{ $json.choices[0].message.content }}",
+        "appendAttribution": false,
+        "options": {}
+      },
+      "id": "5",
+      "name": "Gmail (Send Report)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1050,
+        300
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Read Binary File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Binary File": {
+      "main": [
+        [
+          {
+            "node": "Groq Whisper (Transcription)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Whisper (Transcription)": {
+      "main": [
+        [
+          {
+            "node": "Groq Llama 3 (Extraction)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Llama 3 (Extraction)": {
+      "main": [
+        [
+          {
+            "node": "Gmail (Send Report)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {}
+}

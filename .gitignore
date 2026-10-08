@@ -1,0 +1,27 @@
+# Virtual Environment & Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Session & Authentication Secrets (DO NOT COMMIT!)
+telegram_user.session
+telegram_user.session-journal
+watcher.lock
+chrome_bot_profile/
+
+# Media Recordings & Heavy Files
+recordings/
+*.mp4
+*.mp3
+*.wav
+*.webm
+
+# Node dependencies
+node_modules/
+package-lock.json
+
+# OS specific
+Thumbs.db
+Desktop.ini
