@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>L3 Automatique — EAD3 Master Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #070a12;
+      --card-bg: #0f172a;
+      --card-border: #1e293b;
+      --accent: #2563eb;
+      --accent-light: #60a5fa;
+      --accent-glow: rgba(37, 99, 235, 0.3);
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.3);
+      --purple: #8b5cf6;
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --cyan: #06b6d4;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --goog-blue: #38bdf8;
+      
+      /* School Schedule Colors */
+      --color-sensors: #e2e8f0;       --color-sensors-bg: #1e2533;
+      --color-innovation: #94a3b8;    --color-innovation-bg: #2d3748;
+      --color-power: #e9d5ff;         --color-power-bg: #35254d;
+      --color-power-td: #d8b4fe;      --color-power-td-bg: #3d235c;
+      --color-robotique: #60a5fa;     --color-robotique-bg: #1e3a6a;
+      --color-control: #fef08a;       --color-control-bg: #3a381d;
+      --color-embedded: #fde68a;      --color-embedded-bg: #3d351c;
+      --color-machines: #cbd5e1;      --color-machines-bg: #21293a;
+      --color-api: #bbf7d0;           --color-api-bg: #1a382b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: radial-gradient(circle at 10% 10%, #111a2f 0%, var(--bg) 80%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* TOP GLOBAL NAVBAR */
+    header {
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-wrap { display: flex; align-items: center; gap: 12px; }
+    .brand-logo {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: linear-gradient(135deg, #2563eb, #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; box-shadow: 0 0 14px var(--accent-glow);
+    }
+    .brand-text h1 { font-size: 1.05rem; font-weight: 800; letter-spacing: -0.02em; }
+    .brand-text p { font-size: 0.72rem; color: var(--text-muted); }
+
+    .live-clock {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;
+      background: #090e17; border: 1px solid var(--card-border);
+      padding: 6px 12px; border-radius: 20px; color: var(--cyan);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .live-dot {
+      width: 8px; height: 8px; background: var(--emerald); border-radius: 50%;
+      box-shadow: 0 0 8px var(--emerald); animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* BACK-AND-FORTH GLOWING ANIMATION FOR THE EXACT CURRENT TIMELINE SLOT */
+    @keyframes timelineSweep {
+      0% {
+        box-shadow: 0 0 12px rgba(56, 189, 248, 0.5), inset 0 0 8px rgba(56, 189, 248, 0.3);
+        border-color: #38bdf8;
+      }
+      50% {
+        box-shadow: 0 0 28px rgba(37, 99, 235, 0.9), inset 0 0 16px rgba(37, 99, 235, 0.5);
+        border-color: #60a5fa;
+      }
+      100% {
+        box-shadow: 0 0 12px rgba(56, 189, 248, 0.5), inset 0 0 8px rgba(56, 189, 248, 0.3);
+        border-color: #38bdf8;
+      }
+    }
+
+    .app-container {
+      flex: 1; padding: 20px 24px 60px; max-width: 1540px; margin: 0 auto; width: 100%;
+      display: flex; flex-direction: column; gap: 24px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       1. TIMETABLE
+       ═══════════════════════════════════════════════════════════════ */
+    .program-card {
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 16px; padding: 18px 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+    }
+    .program-header-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px; flex-wrap: wrap; gap: 10px;
+    }
+    .program-title-wrap { display: flex; align-items: center; gap: 10px; }
+    .program-title-wrap h2 { font-size: 1.15rem; font-weight: 800; color: #fff; }
+
+    .table-scroll-container { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; }
+    .program-table { width: 100%; border-collapse: separate; border-spacing: 5px; min-width: 1080px; }
+
+    .th-slot {
+      background: #fef08a; color: #713f12; padding: 9px 8px; font-size: 0.82rem;
+      font-weight: 800; text-align: center; border-radius: 6px; border: 1px solid #facc15;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .th-corner {
+      background: #0284c7; color: #fff; font-size: 0.82rem; font-weight: 800;
+      padding: 9px 12px; border-radius: 6px; text-align: center; width: 105px;
+    }
+    .td-day {
+      background: #0ea5e9; color: #fff; font-weight: 800; font-size: 0.84rem;
+      text-align: center; padding: 12px 8px; border-radius: 6px; border: 1px solid #0284c7;
+    }
+    .td-break {
+      background: #1e293b; color: #94a3b8; font-size: 0.72rem; font-weight: 800;
+      text-align: center; writing-mode: vertical-rl; transform: rotate(180deg);
+      padding: 12px 6px; letter-spacing: 0.1em; border-radius: 6px; border: 1px solid #334155;
+    }
+    .td-empty {
+      background: rgba(15, 23, 42, 0.4); border: 1px dashed rgba(51, 65, 85, 0.35); border-radius: 8px;
+    }
+
+    .td-course {
+      border-radius: 8px; padding: 10px 12px; vertical-align: top; cursor: pointer;
+      transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1); position: relative;
+      height: 98px; border: 1px solid transparent;
+    }
+    .td-course:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }
+    .td-course.active-cell { box-shadow: 0 0 0 2px #fff, 0 8px 20px rgba(0,0,0,0.5); }
+
+    /* DEEP GREYED OUT EFFECT FOR PASSED SESSIONS */
+    .td-course.session-passed {
+      opacity: 0.28 !important;
+      filter: grayscale(85%) contrast(85%) !important;
+      background: #111622 !important;
+      border-color: #1e293b !important;
+    }
+    .td-course.session-passed:hover {
+      opacity: 0.85 !important;
+      filter: grayscale(10%) !important;
+    }
+
+    /* CURRENT TIMELINE CELL (LIVE ACTIVE PULSING GLOW) */
+    .td-course.timeline-current {
+      opacity: 1 !important;
+      filter: none !important;
+      animation: timelineSweep 2.2s infinite ease-in-out !important;
+      z-index: 10;
+    }
+
+    /* COURSE COLORS */
+    .course-sensors { background: var(--color-sensors-bg); border-color: #475569; color: var(--color-sensors); }
+    .course-innovation { background: var(--color-innovation-bg); border-color: #64748b; color: #f1f5f9; }
+    .course-power { background: var(--color-power-bg); border-color: #a855f7; color: var(--color-power); }
+    .course-power-td { background: var(--color-power-td-bg); border-color: #c084fc; color: var(--color-power-td); }
+    .course-robotique { background: var(--color-robotique-bg); border-color: #3b82f6; color: var(--color-robotique); }
+    .course-control { background: var(--color-control-bg); border-color: #eab308; color: var(--color-control); }
+    .course-embedded { background: var(--color-embedded-bg); border-color: #f59e0b; color: var(--color-embedded); }
+    .course-machines { background: var(--color-machines-bg); border-color: #64748b; color: var(--color-machines); }
+    .course-api { background: var(--color-api-bg); border-color: #22c55e; color: var(--color-api); }
+
+    .cell-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+    .cell-title { font-size: 0.8rem; font-weight: 700; line-height: 1.25; color: inherit; }
+    .cell-prof { font-size: 0.72rem; font-weight: 600; color: #cbd5e1; margin-top: 3px; }
+    .cell-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+    .type-badge {
+      font-size: 0.65rem; font-weight: 800; text-transform: uppercase;
+      padding: 1px 6px; border-radius: 4px; background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.15); color: #fff;
+    }
+
+    .cell-badges { display: flex; align-items: center; gap: 4px; }
+    .rec-badge {
+      display: inline-flex; align-items: center; gap: 3px; font-size: 0.62rem;
+      font-weight: 800; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444;
+      color: #f87171; padding: 2px 5px; border-radius: 4px;
+    }
+    .rec-dot { width: 5px; height: 5px; background: #ef4444; border-radius: 50%; }
+
+    /* Warning Badge for Missed or Incomplete Recordings */
+    .warn-rec-badge {
+      display: inline-flex; align-items: center; gap: 3px; font-size: 0.62rem;
+      font-weight: 800; background: rgba(245, 158, 11, 0.2); border: 1px solid var(--amber);
+      color: #fbbf24; padding: 2px 5px; border-radius: 4px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       2. DRILLDOWN ARCHIVE & DETAILS
+       ═══════════════════════════════════════════════════════════════ */
+    .drilldown-layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; }
+    @media (max-width: 1024px) { .drilldown-layout { grid-template-columns: 1fr; } }
+
+    .archive-panel {
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 12px;
+      height: fit-content;
+    }
+    .archive-header {
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid var(--card-border); padding-bottom: 10px;
+    }
+    .archive-filter-tabs {
+      display: flex; background: #090e17; border: 1px solid var(--card-border);
+      border-radius: 8px; padding: 3px; gap: 4px;
+    }
+    .filter-tab {
+      flex: 1; background: transparent; border: none; padding: 6px 10px;
+      font-size: 0.74rem; font-weight: 700; color: var(--text-muted);
+      border-radius: 6px; cursor: pointer; transition: all 0.15s;
+    }
+    .filter-tab.active { background: var(--accent); color: #fff; }
+
+    .history-list { display: flex; flex-direction: column; gap: 8px; max-height: 700px; overflow-y: auto; }
+    .history-item {
+      background: #090e17; border: 1px solid var(--card-border); border-radius: 10px;
+      padding: 12px 14px; cursor: pointer; transition: all 0.2s; text-align: left;
+    }
+    .history-item:hover { border-color: var(--accent-light); background: #111a2f; }
+    .history-item.active { border-color: var(--accent); background: #14213d; }
+
+    .h-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .h-date { font-size: 0.72rem; font-family: 'JetBrains Mono', monospace; color: var(--cyan); font-weight: 700; }
+    .h-title { font-size: 0.86rem; font-weight: 700; color: #fff; line-height: 1.3; margin-bottom: 3px; }
+    .h-meta { font-size: 0.74rem; color: var(--text-muted); }
+
+    .session-viewer {
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 16px; padding: 24px 28px; display: flex; flex-direction: column;
+      gap: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    }
+
+    .viewer-header {
+      background: #090e17; border: 1px solid var(--card-border); border-radius: 12px;
+      padding: 18px 22px; display: flex; flex-direction: column; gap: 12px;
+    }
+    .vh-top-row { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; }
+    .vh-course-tag { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-light); }
+    .vh-title { font-size: 1.55rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; margin-top: 2px; }
+
+    .prof-contact-bar {
+      background: #0f172a; border: 1px solid #1e293b; border-radius: 8px;
+      padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; font-size: 0.82rem;
+    }
+    .contact-item { display: flex; align-items: center; gap: 6px; color: #cbd5e1; }
+    .meet-link-full {
+      color: var(--goog-blue); text-decoration: none; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 3px 8px; border-radius: 4px;
+    }
+
+    /* SWITCH INTELLIGENCE */
+    .switch-intel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    .switch-card {
+      background: #090e17; border: 1px solid var(--card-border); border-radius: 12px;
+      padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .switch-card.state-true {
+      border-color: rgba(16, 185, 129, 0.5); background: linear-gradient(145deg, #0b1a16 0%, #07120e 100%);
+      box-shadow: 0 0 16px var(--emerald-glow);
+    }
+    .switch-card.state-false { opacity: 0.65; border-color: #1e293b; }
+
+    .switch-header { display: flex; justify-content: space-between; align-items: center; }
+    .switch-title { font-size: 0.74rem; font-weight: 800; text-transform: uppercase; color: #94a3b8; }
+    .switch-badge { font-size: 0.68rem; font-weight: 800; padding: 2px 8px; border-radius: 12px; font-family: 'JetBrains Mono', monospace; }
+    .switch-card.state-true .switch-badge { background: var(--emerald); color: #000; }
+    .switch-card.state-false .switch-badge { background: #1e293b; color: #64748b; }
+    .switch-detail { font-size: 0.85rem; color: #cbd5e1; line-height: 1.45; }
+
+    /* RECORDING AUDIT BOX (EXPLAINS WHY A SESSION RECORDED OR FAILED) */
+    .rec-audit-box {
+      border-radius: 10px; padding: 12px 16px; display: flex; align-items: center;
+      gap: 12px; font-size: 0.82rem;
+    }
+    .audit-success { background: rgba(16, 185, 129, 0.1); border: 1px solid var(--emerald); color: #6ee7b7; }
+    .audit-warning { background: rgba(245, 158, 11, 0.1); border: 1px solid var(--amber); color: #fde68a; }
+
+    /* TELEGRAM COURSE FILES & MATERIALS CARD */
+    .materials-box {
+      background: #090e17; border: 1px solid var(--card-border); border-radius: 12px; padding: 18px;
+    }
+    .materials-head {
+      font-size: 0.95rem; font-weight: 800; display: flex; align-items: center;
+      justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid var(--card-border);
+      padding-bottom: 8px;
+    }
+    .materials-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+    .mat-card {
+      background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 10px 12px;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .mat-info { overflow: hidden; }
+    .mat-name { font-size: 0.78rem; font-weight: 700; color: #f1f5f9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mat-size { font-size: 0.68rem; color: var(--text-muted); }
+    .mat-dl-btn {
+      background: rgba(37, 99, 235, 0.15); border: 1px solid rgba(37, 99, 235, 0.3);
+      color: var(--accent-light); padding: 4px 10px; border-radius: 4px; font-size: 0.72rem;
+      font-weight: 700; text-decoration: none; flex-shrink: 0;
+    }
+    .mat-dl-btn:hover { background: var(--accent); color: #fff; }
+
+    /* ACTION BAR: RAW TRANSCRIPT & MASTER PROMPT ACCESS */
+    .action-panel-bar {
+      display: flex; gap: 12px; flex-wrap: wrap;
+    }
+    .btn-action {
+      flex: 1; padding: 12px 18px; border-radius: 10px; border: none; font-size: 0.85rem;
+      font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      gap: 8px; transition: all 0.2s;
+    }
+    .btn-action-transcript {
+      background: #1e293b; color: #fff; border: 1px solid #334155;
+    }
+    .btn-action-transcript:hover { background: #334155; }
+    .btn-action-prompt {
+      background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff;
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+    .btn-action-prompt:hover { transform: translateY(-1px); }
+
+    /* MODAL POPUPS FOR TRANSCRIPT & MASTER PROMPT */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(8px); z-index: 200; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-box {
+      background: #0b1120; border: 1px solid #283759; border-radius: 16px;
+      max-width: 840px; width: 100%; max-height: 85vh; display: flex; flex-direction: column;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.6); overflow: hidden;
+    }
+    .modal-head {
+      padding: 16px 20px; border-bottom: 1px solid #1e293b; display: flex;
+      justify-content: space-between; align-items: center;
+    }
+    .modal-title { font-size: 1.05rem; font-weight: 800; color: #fff; }
+    .modal-close {
+      background: transparent; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer;
+    }
+    .modal-body {
+      padding: 18px 20px; overflow-y: auto; flex: 1; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem; line-height: 1.6; color: #93c5fd; white-space: pre-wrap;
+    }
+    .modal-footer {
+      padding: 12px 20px; border-top: 1px solid #1e293b; display: flex;
+      justify-content: flex-end; gap: 10px;
+    }
+
+    /* DETAILED LECTURE EXPLANATION CARD */
+    .summary-card {
+      background: #090e17; border: 1px solid var(--card-border); border-radius: 12px; padding: 24px;
+    }
+    .summary-head {
+      font-size: 1.05rem; font-weight: 800; display: flex; align-items: center;
+      gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--card-border); padding-bottom: 10px;
+    }
+    .summary-content { font-size: 0.92rem; line-height: 1.75; color: #cbd5e1; }
+    .summary-content h4 { font-size: 1.05rem; font-weight: 800; color: #fff; margin: 18px 0 8px; }
+    .summary-content p { margin-bottom: 12px; }
+    .summary-content ul, .summary-content ol { margin-left: 20px; margin-bottom: 14px; }
+    .summary-content li { margin-bottom: 6px; }
+    .summary-content code {
+      font-family: 'JetBrains Mono', monospace; background: #172033;
+      padding: 2px 6px; border-radius: 4px; color: var(--goog-blue);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <header>
+    <div class="brand-wrap">
+      <div class="brand-logo">🎓</div>
+      <div class="brand-text">
+        <h1>L3 Automatique — Specialty: EAD3</h1>
+        <p>Real-Time Timetable & Intelligent Autonomous Study Center</p>
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <div class="live-clock">
+        <div class="live-dot"></div>
+        <span id="liveClockDisplay">Live Time</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- APP CONTAINER -->
+  <div class="app-container">
+
+    <!-- 1. OFFICIAL UNIVERSITY TIMETABLE -->
+    <div class="program-card">
+      <div class="program-header-row">
+        <div class="program-title-wrap">
+          <span>📅</span>
+          <h2>Official Program (EAD3)</h2>
+          <span style="font-size: 0.72rem; color: var(--text-muted);">(Passed sessions are greyed out • Current timeline slot glows in real-time)</span>
+        </div>
+      </div>
+
+      <div class="table-scroll-container">
+        <table class="program-table" id="programTable"></table>
+      </div>
+    </div>
+
+    <!-- 2. DRILLDOWN ARCHIVE & DETAILS SECTION -->
+    <div class="drilldown-layout" id="detailsSection">
+
+      <!-- LEFT ARCHIVE PANEL -->
+      <div class="archive-panel">
+        <div class="archive-header">
+          <h3>📚 Session History</h3>
+          <span style="font-size: 0.72rem; color: var(--text-muted);">Latest → Oldest</span>
+        </div>
+
+        <div class="archive-filter-tabs">
+          <button class="filter-tab active" id="tabModule" onclick="setArchiveFilter('module')">Selected Module</button>
+          <button class="filter-tab" id="tabAll" onclick="setArchiveFilter('all')">All Modules</button>
+        </div>
+
+        <div class="history-list" id="historyList"></div>
+      </div>
+
+      <!-- RIGHT VIEWER PANEL -->
+      <div class="session-viewer" id="sessionViewer">
+
+        <!-- HEADER & PROFESSOR CONTACT -->
+        <div class="viewer-header">
+          <div class="vh-top-row">
+            <div>
+              <div class="vh-course-tag" id="vTag">Course Module</div>
+              <div class="vh-title" id="vTitle">Select a Module from the Timetable</div>
+            </div>
+          </div>
+          <div class="prof-contact-bar" id="vContactBar"></div>
+        </div>
+
+        <!-- RECORDING AUDIT BANNER -->
+        <div id="vAuditBanner"></div>
+
+        <!-- ONE-CLICK ACTION BAR: VIEW TRANSCRIPT & COPY MASTER PROMPT -->
+        <div class="action-panel-bar">
+          <button class="btn-action btn-action-prompt" onclick="openMasterPromptModal()">
+            <span>📋</span> Copy Master Study Prompt (Ready for Gemini / Claude)
+          </button>
+          <button class="btn-action btn-action-transcript" onclick="openTranscriptModal()">
+            <span>📜</span> Read Full Raw Transcript
+          </button>
+        </div>
+
+        <!-- TELEGRAM COURSE MATERIALS & FILES -->
+        <div class="materials-box">
+          <div class="materials-head">
+            <span>📁 Official Course Files & TD Materials (Telegram Sync)</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Synced from Automatique L3</span>
+          </div>
+          <div class="materials-grid" id="vMaterialsGrid"></div>
+        </div>
+
+        <!-- SWITCH-BASED TRUE / FALSE INTELLIGENCE -->
+        <div class="switch-intel-grid" id="vSwitchGrid"></div>
+
+        <!-- IN-DEPTH PEDAGOGICAL LESSON SUMMARY -->
+        <div class="summary-card">
+          <div class="summary-head"><span>🧠</span> Comprehensive Academic Understanding & Deep Lesson Purpose</div>
+          <div class="summary-content" id="vSummary"></div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- POPUP MODAL FOR TRANSCRIPT -->
+  <div class="modal-overlay" id="transcriptModal">
+    <div class="modal-box">
+      <div class="modal-head">
+        <div class="modal-title" id="transModalTitle">📜 Full Course Transcript</div>
+        <button class="modal-close" onclick="closeModal('transcriptModal')">✕</button>
+      </div>
+      <div class="modal-body" id="transModalBody">Loading transcript...</div>
+      <div class="modal-footer">
+        <button class="btn-action btn-action-transcript" onclick="copyModalContent('transModalBody')">Copy Transcript</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP MODAL FOR MASTER PROMPT -->
+  <div class="modal-overlay" id="promptModal">
+    <div class="modal-box">
+      <div class="modal-head">
+        <div class="modal-title">🧠 Master Study Prompt (Auto-Generated)</div>
+        <button class="modal-close" onclick="closeModal('promptModal')">✕</button>
+      </div>
+      <div class="modal-body" id="promptModalBody">Loading master prompt...</div>
+      <div class="modal-footer">
+        <button class="btn-action btn-action-prompt" onclick="copyModalContent('promptModalBody')">Copy Prompt to Clipboard</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ═════════════════════════════════════════════════════════════════
+    // PROFESSOR CONTACT DIRECTORY
+    // ═════════════════════════════════════════════════════════════════
+    const PROFESSOR_CONTACTS = {
+      "MERABTI": { email: "merabti.embedded@univ-annaba.dz", office: "Dept. Automatique - Office B14" },
+      "GHERBI": { email: "gherbi.control@univ-annaba.dz", office: "Dept. Automatique - Office A08" },
+      "MOKHNACHE": { email: "mokhnache.power@univ-annaba.dz", office: "Dept. Electrotechnique - Lab 2" },
+      "HAFS": { email: "hafs.sensors@univ-annaba.dz", office: "Dept. Automatique - Office C03" },
+      "BABES": { email: "babes.innovation@univ-annaba.dz", office: "Dept. Management & Tech - Office 12" },
+      "RAMDANI": { email: "ramdani.robotique@univ-annaba.dz", office: "Dept. Automatique - Robotics Lab" },
+      "CHELLI": { email: "chelli.machines@univ-annaba.dz", office: "Dept. Electrotechnique - Office 04" },
+      "RIGHI": { email: "righi.api@univ-annaba.dz", office: "Dept. Automatique - PLC Lab" }
+    };
+
+    const SLOTS = [
+      { id: "0830", label: "8:30 - 10:00", start: "08:30", end: "10:00" },
+      { id: "1000", label: "10:00 - 11:30", start: "10:00", end: "11:30" },
+      { id: "1130", label: "11:30 - 13:00", start: "11:30", end: "13:00" },
+      { id: "1400", label: "14:00 - 15:30", start: "14:00", end: "15:30" },
+      { id: "1530", label: "15:30 - 17:00", start: "15:30", end: "17:00" },
+      { id: "1700", label: "17:00 - 18:30", start: "17:00", end: "18:30" }
+    ];
+
+    const DAYS = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
+
+    const CURRICULUM = {
+      // Sunday
+      "Sunday_0830": { name: "Industrial Sensors and Instrumentation (C)", prof: "HAFS", type: "C", css: "course-sensors", meet: "https://meet.google.com/drg-pmjq-xsu", hasRec: false, recIssue: "PC was rebooting during class start; recording process was restarted." },
+      "Sunday_1000": { name: "Industrial Sensors and Instrumentation (Tutorial)", prof: "HAFS", type: "TD", css: "course-sensors", meet: "https://meet.google.com/drg-pmjq-xsu", hasRec: false, recIssue: "Audio input was set to muted stereo mix." },
+      "Sunday_1130": { name: "Innovation Management (C)", prof: "BABES", type: "C", css: "course-innovation", meet: "https://meet.google.com/ybb-ppen-jds", hasRec: true },
+      "Sunday_1400": { name: "Power Electronics (C)", prof: "MOKHNACHE", type: "C", css: "course-power", meet: "https://meet.google.com/joq-kgbf-mki", hasRec: true },
+      "Sunday_1530": { name: "Power Electronics (Tutorial / Lab-Work)", prof: "MOKHNACHE", type: "TD/TP", css: "course-power-td", meet: "https://meet.google.com/joq-kgbf-mki", hasRec: true },
+      "Sunday_1700": { name: "Robotique (C)", prof: "RAMDANI", type: "C", css: "course-robotique", meet: "https://meet.google.com/bfv-iipp-qzb", hasRec: false, recIssue: "Professor admitted students late; session interrupted." },
+
+      // Tuesday
+      "Tuesday_0830": { name: "Control Systems 2 (C)", prof: "GHERBI", type: "C", css: "course-control", meet: "https://meet.google.com/csb-hbbq-nok", hasRec: false, recIssue: "Session scheduled for next Tuesday." },
+      "Tuesday_1000": { name: "Embedded Computer 1 (C)", prof: "MERABTI", type: "C", css: "course-embedded", meet: "https://meet.google.com/mce-kjtq-cep", hasRec: true },
+      "Tuesday_1130": { name: "Embedded Computer 1 (Tutorial)", prof: "MERABTI", type: "TD", css: "course-embedded", meet: "https://meet.google.com/mce-kjtq-cep", hasRec: false, recIssue: "Professor skipped TD break; session merged." },
+      "Tuesday_1400": { name: "Control Systems 2 (Tutorial)", prof: "GHERBI", type: "TD", css: "course-control", meet: "https://meet.google.com/csb-hbbq-nok", hasRec: true },
+      "Tuesday_1530": { name: "Electrical Machines and Drives (C)", prof: "CHELLI", type: "C", css: "course-machines", meet: "https://meet.google.com/ddj-mrwm-qdk", hasRec: false, recIssue: "Audio capture glitch during late connection." },
+
+      // Thursday
+      "Thursday_0830": { name: "Industrial Programmable Automation 1 (C)", prof: "RIGHI", type: "C", css: "course-api", meet: "https://meet.google.com/pti-nsoj-hui", hasRec: false, recIssue: "Upcoming lecture slot." },
+      "Thursday_1000": { name: "Industrial Programmable Automation 1 (Tutorial)", prof: "RIGHI", type: "TD", css: "course-api", meet: "https://meet.google.com/pti-nsoj-hui", hasRec: true }
+    };
+
+    let SESSIONS = [
+      {
+        id: "control-td-oct6",
+        course_name: "Control Systems 2 (TD)",
+        module_canonical: "Control Systems 2",
+        date: "2026-10-06",
+        time: "14:04 - 15:30",
+        duration: "85.7 min",
+        professor: "GHERBI",
+        meet: "https://meet.google.com/csb-hbbq-nok",
+        hasRec: true,
+        switches: {
+          malikCalled: false,
+          malikDetail: "No direct question was asked specifically to Malik Mehdid. Tracked in general cohort Q&A.",
+          homeworkAssigned: true,
+          homeworkDetail: "Complete remaining exercises on the TD sheet (Bode plot cutoff frequency and discrete Te bounds).",
+          examAnnounced: false,
+          examDetail: "No formal exam date announced. Continuous assessment (contrôle continu) applies.",
+          peersCalled: ["Mr. Shabitra", "Fady Messai", "Assala Metallaoui"],
+          teacherAnnouncement: "TD exercises & notes are being shared via Telegram channel ('A Tgg'). Practice Bode approximations."
+        },
+        transcript: "Full audio recorded via dual WASAPI loopback (85.7 minutes). Topics: Discretization of DC motor transfer functions, selecting Te bounds between tau/10 and tau/4, bandwidth multiplier rules [1/(24fc), 1/(6fc)], second-order damping ratio xi = 0.707 analysis.",
+        master_prompt: "# MASTER STUDY & TUTORING PROMPT: Control Systems 2 (TD)\n\n## 1. Persona & Mission\nYou are an elite professor of digital control systems for L3 Automatique. Tutor the student through discretization, sampling period Te bounds, and DC motor velocity/position loops.\n\n## 2. Ingested Core Formulations\n- Sampling bound: Te in [1/(24 fc), 1/(6 fc)]\n- First-order time-constant bound: Te in [tau/10, tau/4]\n- Second order damped formula: Te = 1/8 * (2pi / (omega_0 * sqrt(1 - xi^2)))\n\n## 3. Exam Traps & Warnings\nBeware of confusing open-loop cutoff frequency with closed-loop bandwidth on Bode plots.\n",
+        summary: `
+          <h4>1. 🎯 What We Did & Core Engineering Purpose</h4>
+          <p>We solved discrete-time digital control problems to select the optimal sampling period (<code>Te</code>) when converting continuous physical loops into discrete computer controllers without destabilizing the system.</p>
+          <h4>2. 🔑 Key Themes & Physical Intuition</h4>
+          <ul>
+            <li><strong>Bandwidth Rule:</strong> Sampling frequency must be 6 to 24 times the closed-loop cutoff frequency (<code>fc</code>).</li>
+            <li><strong>DC Motor Control:</strong> Derived transfer functions for speed (1st order) and position (2nd order with integrator).</li>
+            <li><strong>Bode Diagram Method:</strong> When no transfer function is provided, read cutoff frequency at -3dB directly from the graph.</li>
+          </ul>
+        `
+      },
+      {
+        id: "embedded-c-oct6",
+        course_name: "Embedded Computer 1 (C)",
+        module_canonical: "Embedded Computer 1",
+        date: "2026-10-06",
+        time: "10:21 - 11:30",
+        duration: "68.5 min",
+        professor: "MERABTI",
+        meet: "https://meet.google.com/mce-kjtq-cep",
+        hasRec: true,
+        switches: {
+          malikCalled: false,
+          malikDetail: "No single direct call-out for Malik Mehdid during this theoretical lecture.",
+          homeworkAssigned: true,
+          homeworkDetail: "Prepare calculations for upcoming practical TD session on memory capacity ('EAD 3' exercises).",
+          examAnnounced: false,
+          examDetail: "No exam date stated.",
+          peersCalled: ["Arabi", "Israël", "Estabra", "Nadi", "Aqman", "Khalid", "Moussa"],
+          teacherAnnouncement: "Master the 2^A x D addressing formula. Intel 8085 and ARM/STM32 platforms will be used for coursework."
+        },
+        transcript: "Full audio recorded via dual WASAPI loopback (68.5 minutes). Topics: Address bus, Data bus, Control bus, 2^A x D addressing formula, 64KB calculation example (2^16 x 8 bits), Von Neumann vs Harvard architecture, Program Counter (PC), Stack Pointer (SP), ALU, CISC vs RISC.",
+        master_prompt: "# MASTER STUDY & TUTORING PROMPT: Embedded Computer 1 (C)\n\n## 1. Persona & Mission\nYou are a senior embedded systems architect tutoring an L3 Automatique student. Master microprocessor memory buses, register sets, and Von Neumann vs Harvard tradeoffs.\n\n## 2. Ingested Knowledge\n- Addressing capacity: Capacity = 2^A * D\n- 16 address lines with 8-bit data: 2^16 * 1 Byte = 64 KB (0000H to FFFFH)\n- PC: Points to next instruction address\n- SP: 16-bit register tracking stack top\n",
+        summary: `
+          <h4>1. 🎯 What We Did & Core Engineering Purpose</h4>
+          <p>The professor laid out the fundamental architecture of microprocessors, explaining how the CPU interfaces with memory and peripherals using physical address, data, and control buses.</p>
+          <h4>2. 🔑 Key Themes & Physical Intuition</h4>
+          <ul>
+            <li><strong>Capacity Formula:</strong> <code>Capacity = 2^A × D</code> (where A = address lines, D = data bus width).</li>
+            <li><strong>Architectural Models:</strong> Von Neumann (shared memory/bus bottleneck) vs Harvard (physically isolated program and data memories).</li>
+            <li><strong>Internal Registers:</strong> Program Counter (PC), Stack Pointer (SP), and ALU.</li>
+          </ul>
+        `
+      },
+      {
+        id: "power-c-oct4",
+        course_name: "Power Electronics (C)",
+        module_canonical: "Power Electronics",
+        date: "2026-10-04",
+        time: "14:05 - 15:30",
+        duration: "84.1 min",
+        professor: "MOKHNACHE",
+        meet: "https://meet.google.com/joq-kgbf-mki",
+        hasRec: true,
+        switches: {
+          malikCalled: false,
+          malikDetail: "No direct question directed to Malik Mehdid.",
+          homeworkAssigned: false,
+          homeworkDetail: "No homework assigned. Review the RL load numerical application.",
+          examAnnounced: false,
+          examDetail: "No test date stated.",
+          peersCalled: ["William", "Tina", "Mr. President"],
+          teacherAnnouncement: "Crucial rule: The main rectifying diode D1 and freewheeling diode D2 must NEVER conduct simultaneously."
+        },
+        transcript: "Full audio recorded via dual WASAPI loopback (84.1 minutes). Topics: Half-wave rectifier with RL load, stored magnetic energy (1/2 L i^2), extinction angle beta, freewheeling diode (diode de roue libre), output voltage clamping to 0V during negative cycle, Fourier harmonics expansion.",
+        master_prompt: "# MASTER STUDY & TUTORING PROMPT: Power Electronics (C)\n\n## 1. Persona & Mission\nYou are a power electronics professor tutoring an L3 engineering student. Analyze uncontrolled rectification, inductive discharge, and Fourier harmonic breakdowns.\n\n## 2. Ingested Knowledge\n- D1 and D2 never conduct simultaneously\n- Freewheeling diode clamps negative half-cycle to 0V\n- Output voltage Fourier series: V(t) = Vm/pi + (Vm/2)sin(wt) + Sum[ 2Vm/((n^2-1)pi) * cos(nwt) ]\n",
+        summary: `
+          <h4>1. 🎯 What We Did & Core Engineering Purpose</h4>
+          <p>Analyzed single-phase uncontrolled half-wave rectifiers with inductive (RL) loads, studying why inductive energy causes unwanted negative voltage and how the freewheeling diode prevents it.</p>
+          <h4>2. 🔑 Key Themes & Physical Intuition</h4>
+          <ul>
+            <li><strong>Freewheeling Diode (Roue Libre):</strong> Clamps load voltage to 0V during negative cycle, preventing reverse spikes.</li>
+            <li><strong>Fourier Expansion:</strong> Decomposed output voltage into DC component and harmonic frequencies.</li>
+          </ul>
+        `
+      }
+    ];
+
+    let activeSession = SESSIONS[0];
+    let selectedModuleFilter = "Control Systems 2";
+    let archiveFilterMode = "module";
+    let telegramMaterials = [];
+
+    // ═════════════════════════════════════════════════════════════════
+    // RENDER TIMETABLE WITH CURRENT TIMELINE PULSING GLOW & GREYING
+    // ═════════════════════════════════════════════════════════════════
+    function renderTimetable() {
+      const table = document.getElementById("programTable");
+      table.innerHTML = "";
+
+      const hRow = document.createElement("tr");
+      hRow.innerHTML = `<th class="th-corner">Days</th>`;
+      SLOTS.slice(0, 3).forEach(s => hRow.innerHTML += `<th class="th-slot">${s.label}</th>`);
+      hRow.innerHTML += `<th class="td-break" rowspan="7">BREAK TIME 13:00–14:00</th>`;
+      SLOTS.slice(3).forEach(s => hRow.innerHTML += `<th class="th-slot">${s.label}</th>`);
+      table.appendChild(hRow);
+
+      const now = new Date();
+      const jsDayToName = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const currentDayName = jsDayToName[now.getDay()];
+      const dayOrder = { "Saturday": 0, "Sunday": 1, "Monday": 2, "Tuesday": 3, "Wednesday": 4, "Thursday": 5 };
+      const currentWeekDayNum = dayOrder[currentDayName] !== undefined ? dayOrder[currentDayName] : -1;
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      DAYS.forEach(day => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td class="td-day">${day}</td>`;
+
+        SLOTS.slice(0, 3).forEach(slot => {
+          tr.appendChild(createCell(day, slot, now, currentWeekDayNum, currentMinutes, dayOrder));
+        });
+        SLOTS.slice(3).forEach(slot => {
+          tr.appendChild(createCell(day, slot, now, currentWeekDayNum, currentMinutes, dayOrder));
+        });
+
+        table.appendChild(tr);
+      });
+    }
+
+    function createCell(day, slot, now, currentWeekDayNum, currentMinutes, dayOrder) {
+      const key = `${day}_${slot.id}`;
+      const item = CURRICULUM[key];
+      const td = document.createElement("td");
+
+      if (!item) {
+        td.className = "td-empty";
+        return td;
+      }
+
+      const cellDayNum = dayOrder[day];
+      const [sh, sm] = slot.start.split(":").map(Number);
+      const [eh, em] = slot.end.split(":").map(Number);
+      const slotStartMinutes = sh * 60 + sm;
+      const slotEndMinutes = eh * 60 + em;
+
+      // 1. Is this session already passed in the week?
+      let isPassed = false;
+      if (currentWeekDayNum > cellDayNum) {
+        isPassed = true;
+      } else if (currentWeekDayNum === cellDayNum && currentMinutes >= slotEndMinutes) {
+        isPassed = true;
+      }
+
+      // 2. Is this the exact session/slot we are currently in right now?
+      const isCurrentTimelineSlot = (currentWeekDayNum === cellDayNum) && (currentMinutes >= slotStartMinutes) && (currentMinutes < slotEndMinutes);
+
+      let classes = `td-course ${item.css}`;
+      if (isPassed && !isCurrentTimelineSlot) classes += " session-passed";
+      if (isCurrentTimelineSlot) classes += " timeline-current";
+
+      td.className = classes;
+
+      // Status Badges
+      let badgeHtml = "";
+      if (isCurrentTimelineSlot) {
+        badgeHtml += `<span class="live-dot" style="display:inline-block;" title="Currently in progress"></span>`;
+      }
+      if (item.hasRec) {
+        badgeHtml += `<span class="rec-badge" title="Recorded & transcribed successfully"><span class="rec-dot"></span>REC</span>`;
+      } else if (isPassed && !item.hasRec) {
+        badgeHtml += `<span class="warn-rec-badge" title="Recording was not captured. Click for details.">⚠️ NO REC</span>`;
+      }
+
+      td.innerHTML = `
+        <div class="cell-top">
+          <div class="cell-title">${item.name}</div>
+          <div class="cell-badges">${badgeHtml}</div>
+        </div>
+        <div class="cell-prof">Prof: <strong>${item.prof}</strong></div>
+        <div class="cell-footer">
+          <span class="type-badge">${item.type}</span>
+          <span style="font-size:0.65rem; color:#94a3b8;">${slot.label}</span>
+        </div>
+      `;
+
+      td.onclick = () => {
+        document.querySelectorAll(".td-course").forEach(c => c.classList.remove("active-cell"));
+        td.classList.add("active-cell");
+
+        const canon = item.name.split(" (")[0];
+        selectedModuleFilter = canon;
+        document.getElementById("tabModule").innerText = canon;
+
+        const match = SESSIONS.find(s => s.course_name.includes(canon));
+        if (match) {
+          selectSession(match, item);
+        } else {
+          showPlaceholder(item, day, slot);
+        }
+
+        renderArchiveList();
+        renderMaterials();
+        document.getElementById("detailsSection").scrollIntoView({ behavior: 'smooth' });
+      };
+
+      return td;
+    }
+
+    // ═════════════════════════════════════════════════════════════════
+    // ARCHIVE LIST
+    // ═════════════════════════════════════════════════════════════════
+    function setArchiveFilter(mode) {
+      archiveFilterMode = mode;
+      document.getElementById("tabModule").classList.toggle("active", mode === "module");
+      document.getElementById("tabAll").classList.toggle("active", mode === "all");
+      renderArchiveList();
+    }
+
+    function renderArchiveList() {
+      const container = document.getElementById("historyList");
+      container.innerHTML = "";
+
+      let list = SESSIONS;
+      if (archiveFilterMode === "module" && selectedModuleFilter) {
+        list = SESSIONS.filter(s => s.module_canonical.toLowerCase().includes(selectedModuleFilter.toLowerCase()) || selectedModuleFilter.toLowerCase().includes(s.module_canonical.toLowerCase()));
+      }
+
+      if (list.length === 0) {
+        container.innerHTML = `<div style="font-size:0.75rem; color:var(--text-muted); padding:10px;">No recorded archives yet for ${selectedModuleFilter}.</div>`;
+        return;
+      }
+
+      list.forEach(sess => {
+        const item = document.createElement("div");
+        item.className = `history-item ${activeSession && activeSession.id === sess.id ? 'active' : ''}`;
+        item.onclick = () => selectSession(sess);
+
+        const recBadge = sess.hasRec ? `<span class="rec-badge" style="font-size:0.55rem; padding:1px 4px;"><span class="rec-dot"></span>REC</span>` : `<span class="warn-rec-badge" style="font-size:0.55rem; padding:1px 4px;">⚠️ NO REC</span>`;
+
+        item.innerHTML = `
+          <div class="h-top">
+            <span class="h-date">${sess.date}</span>
+            ${recBadge}
+          </div>
+          <div class="h-title">${sess.course_name}</div>
+          <div class="h-meta">⏱️ ${sess.duration} • Prof: ${sess.professor}</div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    // ═════════════════════════════════════════════════════════════════
+    // SELECT SESSION DETAILS
+    // ═════════════════════════════════════════════════════════════════
+    function selectSession(s, currItem) {
+      activeSession = s;
+      selectedModuleFilter = s.module_canonical;
+      document.getElementById("tabModule").innerText = s.module_canonical;
+
+      document.getElementById("vTag").innerText = "Academic Module & Full Historical Intel";
+      document.getElementById("vTitle").innerText = s.course_name;
+
+      const contact = PROFESSOR_CONTACTS[s.professor] || { email: "contact.dept@univ-annaba.dz", office: "Department of Automatique" };
+      document.getElementById("vContactBar").innerHTML = `
+        <div class="contact-item">👨‍🏫 Prof: <strong>${s.professor}</strong></div>
+        <div class="contact-item">📧 Email: <strong>${contact.email}</strong></div>
+        <div class="contact-item">🏛️ Office: <strong>${contact.office}</strong></div>
+        <div class="contact-item">
+          🎥 Meet: <a href="${s.meet}" target="_blank" class="meet-link-full">${s.meet}</a>
+        </div>
+      `;
+
+      // Recording Audit Banner (Explains why recorded or why missed)
+      const auditBox = document.getElementById("vAuditBanner");
+      if (s.hasRec) {
+        auditBox.innerHTML = `
+          <div class="rec-audit-box audit-success">
+            <span>✅</span>
+            <div><strong>Perfect Audio & Transcription Capture:</strong> Dual loopback recorded both lecturer audio and student interactions without drops. Transcription & prompt generated.</div>
+          </div>
+        `;
+      } else {
+        const reason = currItem && currItem.recIssue ? currItem.recIssue : "Audio stream was unavailable or room was closed.";
+        auditBox.innerHTML = `
+          <div class="rec-audit-box audit-warning">
+            <span>⚠️</span>
+            <div><strong>No Complete Recording Available:</strong> ${reason}</div>
+          </div>
+        `;
+      }
+
+      // Switches
+      const sw = s.switches;
+      document.getElementById("vSwitchGrid").innerHTML = `
+        <div class="switch-card ${sw.malikCalled ? 'state-true' : 'state-false'}">
+          <div class="switch-header">
+            <span class="switch-title">👤 Malik Mehdid Called?</span>
+            <span class="switch-badge">${sw.malikCalled ? 'TRUE' : 'FALSE'}</span>
+          </div>
+          <div class="switch-detail">${sw.malikDetail}</div>
+        </div>
+
+        <div class="switch-card ${sw.homeworkAssigned ? 'state-true' : 'state-false'}">
+          <div class="switch-header">
+            <span class="switch-title">🎯 Homework Assigned?</span>
+            <span class="switch-badge">${sw.homeworkAssigned ? 'TRUE' : 'FALSE'}</span>
+          </div>
+          <div class="switch-detail">${sw.homeworkDetail}</div>
+        </div>
+
+        <div class="switch-card ${sw.examAnnounced ? 'state-true' : 'state-false'}">
+          <div class="switch-header">
+            <span class="switch-title">🚨 Exam / Quiz Announced?</span>
+            <span class="switch-badge">${sw.examAnnounced ? 'TRUE' : 'FALSE'}</span>
+          </div>
+          <div class="switch-detail">${sw.examDetail}</div>
+        </div>
+
+        <div class="switch-card ${sw.peersCalled.length > 0 ? 'state-true' : 'state-false'}">
+          <div class="switch-header">
+            <span class="switch-title">👥 Classmates Interacting</span>
+            <span class="switch-badge">${sw.peersCalled.length > 0 ? sw.peersCalled.length + ' ACTIVE' : 'NONE'}</span>
+          </div>
+          <div class="switch-detail">${sw.peersCalled.join(", ")}</div>
+        </div>
+      `;
+
+      document.getElementById("vSummary").innerHTML = s.summary;
+      renderArchiveList();
+      renderMaterials();
+    }
+
+    function showPlaceholder(item, day, slot) {
+      document.getElementById("vTag").innerText = "Scheduled Timetable Slot";
+      document.getElementById("vTitle").innerText = item.name;
+
+      const contact = PROFESSOR_CONTACTS[item.prof] || { email: "contact.dept@univ-annaba.dz", office: "Dept. Automatique" };
+      document.getElementById("vContactBar").innerHTML = `
+        <div class="contact-item">👨‍🏫 Prof: <strong>${item.prof}</strong></div>
+        <div class="contact-item">📧 Email: <strong>${contact.email}</strong></div>
+        <div class="contact-item">🏛️ Office: <strong>${contact.office}</strong></div>
+        <div class="contact-item">
+          🎥 Meet: <a href="${item.meet}" target="_blank" class="meet-link-full">${item.meet}</a>
+        </div>
+      `;
+
+      const auditBox = document.getElementById("vAuditBanner");
+      if (!item.hasRec && item.recIssue) {
+        auditBox.innerHTML = `
+          <div class="rec-audit-box audit-warning">
+            <span>⚠️</span>
+            <div><strong>Recording Status Notice:</strong> ${item.recIssue}</div>
+          </div>
+        `;
+      } else {
+        auditBox.innerHTML = "";
+      }
+
+      document.getElementById("vSwitchGrid").innerHTML = `
+        <div class="switch-card state-false">
+          <div class="switch-header">
+            <span class="switch-title">Session State</span>
+            <span class="switch-badge">SCHEDULED</span>
+          </div>
+          <div class="switch-detail">Class occurs every ${day} at ${slot.label}. Bot enters automatically.</div>
+        </div>
+      `;
+
+      document.getElementById("vSummary").innerHTML = `<p>Waiting for the live session to conclude. Once recorded, the transcript and deep understanding will be processed here.</p>`;
+    }
+
+    // ═════════════════════════════════════════════════════════════════
+    // RENDER TELEGRAM COURSE MATERIALS
+    // ═════════════════════════════════════════════════════════════════
+    function renderMaterials() {
+      const container = document.getElementById("vMaterialsGrid");
+      container.innerHTML = "";
+
+      if (telegramMaterials.length === 0) {
+        container.innerHTML = `<div style="font-size:0.75rem; color:var(--text-muted);">Syncing documents from Telegram channel...</div>`;
+        return;
+      }
+
+      // Filter documents relevant to selected module or show all
+      let filtered = telegramMaterials;
+      if (selectedModuleFilter) {
+        const query = selectedModuleFilter.toLowerCase();
+        const matches = telegramMaterials.filter(m => {
+          const fn = m.filename.toLowerCase();
+          if (query.includes("embedded") && fn.includes("embedded")) return true;
+          if (query.includes("control") && (fn.includes("control") || fn.includes("te_choice"))) return true;
+          if (query.includes("robot") && fn.includes("robot")) return true;
+          if (query.includes("plc") || query.includes("programmable") && (fn.includes("plc") || fn.includes("asc"))) return true;
+          return false;
+        });
+        if (matches.length > 0) filtered = matches;
+      }
+
+      filtered.forEach(mat => {
+        const card = document.createElement("div");
+        card.className = "mat-card";
+        card.innerHTML = `
+          <div class="mat-info">
+            <div class="mat-name" title="${mat.filename}">📄 ${mat.filename}</div>
+            <div class="mat-size">${mat.size_kb} KB</div>
+          </div>
+          <a href="${mat.url}" download class="mat-dl-btn">Download</a>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // ═════════════════════════════════════════════════════════════════
+    // MODALS: TRANSCRIPT & MASTER PROMPT ACCESS
+    // ═════════════════════════════════════════════════════════════════
+    function openTranscriptModal() {
+      if (!activeSession) return;
+      document.getElementById("transModalTitle").innerText = `📜 Full Transcript: ${activeSession.course_name}`;
+      document.getElementById("transModalBody").innerText = activeSession.transcript || "No raw transcript text logged for this session yet.";
+      document.getElementById("transcriptModal").style.display = "flex";
+    }
+
+    function openMasterPromptModal() {
+      if (!activeSession) return;
+      document.getElementById("promptModalBody").innerText = activeSession.master_prompt || "Master prompt was auto-generated. Copying to clipboard...";
+      document.getElementById("promptModal").style.display = "flex";
+      navigator.clipboard.writeText(activeSession.master_prompt);
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).style.display = "none";
+    }
+
+    function copyModalContent(id) {
+      const text = document.getElementById(id).innerText;
+      navigator.clipboard.writeText(text);
+      alert("✅ Content copied to clipboard!");
+    }
+
+    // ═════════════════════════════════════════════════════════════════
+    // LIVE DATA SYNC
+    // ═════════════════════════════════════════════════════════════════
+    async function loadLiveData() {
+      try {
+        const resp = await fetch("http://localhost:5050/api/data");
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.materials) {
+            telegramMaterials = data.materials;
+            renderMaterials();
+          }
+          if (data.reports && data.reports.length > 0) {
+            // Merge with SESSIONS if matching
+            data.reports.forEach(rep => {
+              const existing = SESSIONS.find(s => s.course_name.toLowerCase().includes(rep.course_name.toLowerCase()));
+              if (existing) {
+                if (rep.transcript) existing.transcript = rep.transcript;
+                if (rep.master_prompt) existing.master_prompt = rep.master_prompt;
+              }
+            });
+          }
+        }
+      } catch(e) {}
+    }
+
+    function updateClock() {
+      const d = new Date();
+      document.getElementById("liveClockDisplay").innerText = d.toLocaleDateString("en-US", {
+        weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit"
+      });
+      renderTimetable(); // Recalculate passed and glowing active cell every minute
+    }
+
+    // Initial setup
+    setInterval(updateClock, 10000); // 10s clock & timeline check
+    updateClock();
+    renderTimetable();
+    renderArchiveList();
+    selectSession(activeSession);
+    loadLiveData();
+  </script>
+</body>
+</html>
