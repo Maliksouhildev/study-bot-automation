@@ -1,0 +1,30 @@
+{
+  "enabled": true,
+  "meetings": [
+    {
+      "name": "Example Course (C)",
+      "url": "https://meet.google.com/xxx-yyyy-zzz",
+      "day_of_week": "Sunday",
+      "time": "08:30",
+      "duration_minutes": 90,
+      "professor": "PROFESSOR_NAME"
+    },
+    {
+      "name": "Example Course (TD)",
+      "url": "https://meet.google.com/xxx-yyyy-zzz",
+      "day_of_week": "Sunday",
+      "time": "10:00",
+      "duration_minutes": 90,
+      "professor": "PROFESSOR_NAME"
+    }
+  ],
+  "settings": {
+    "random_delay_min_seconds": 240,
+    "random_delay_max_seconds": 360,
+    "chrome_user_data_dir": "./chrome_bot_profile",
+    "chrome_profile_dir": "Default",
+    "late_join_cutoff_minutes": 60,
+    "n8n_webhook_url": "http://localhost:5678/webhook/process-study-session",
+    "output_dir": "recordings"
+  }
+}

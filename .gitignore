@@ -11,6 +11,10 @@ telegram_user.session-journal
 watcher.lock
 chrome_bot_profile/
 
+# Personal config (each user creates their own from config.example.json)
+config.json
+config.backup_*.json
+
 # Media Recordings & Heavy Files
 recordings/
 *.mp4
@@ -18,10 +22,17 @@ recordings/
 *.wav
 *.webm
 
+# QR code temp file
+telegram_qr.png
+
 # Node dependencies
 node_modules/
 package-lock.json
 
+# Test files (not needed in repo)
+test_*.py
+
 # OS specific
 Thumbs.db
 Desktop.ini
+.DS_Store

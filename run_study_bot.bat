@@ -1,6 +1,6 @@
 @echo off
 title Study Bot + Telegram Auto-Updater
-cd /d "C:\Users\mlkme\Desktop\Dev-Projects\cursor-mikow\study_bot"
+cd /d "%~dp0"
 echo ============================================================
 echo Starting Study Bot with Telegram Live Schedule Sync...
 echo ============================================================
