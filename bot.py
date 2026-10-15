@@ -11,6 +11,8 @@ if sys.platform == "win32":
         sys.stderr.reconfigure(encoding="utf-8")
     except Exception:
         pass
+import warnings
+warnings.filterwarnings("ignore")
 import schedule
 import requests
 import subprocess
@@ -23,10 +25,22 @@ CONFIG_FILE = "config.json"
 
 def load_config(retries=10):
     """Load config.json at runtime, handling BOM, empty-file and mid-write edge cases."""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    cfg_path = os.path.join(base_dir, CONFIG_FILE)
+    if not os.path.exists(cfg_path):
+        ex_path = os.path.join(base_dir, "config.example.json")
+        if os.path.exists(ex_path):
+            try:
+                import shutil
+                shutil.copy(ex_path, cfg_path)
+                print("[SETUP] Initialized config.json from config.example.json")
+            except Exception:
+                pass
+
     last_err = None
     for _ in range(retries):
         try:
-            with open(CONFIG_FILE, "r", encoding="utf-8-sig") as f:
+            with open(cfg_path, "r", encoding="utf-8-sig") as f:
                 raw = f.read().strip()
             if not raw:
                 raise ValueError("config.json is empty")
@@ -157,6 +171,26 @@ def join_meeting(meeting, skip_delay=False, class_end=None):
             meeting = m
             break
 
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    if today_str in meeting.get("cancelled_dates", []):
+        print(f"[{datetime.now()}] 🚫 {meeting['name']} is cancelled for today ({today_str}). Skipping.")
+        return
+
+    # ── Mandatory Telegram Pre-Flight Verification ──────────────────────────
+    try:
+        from telegram_preflight import run_telegram_preflight_check
+        chk = run_telegram_preflight_check(meeting)
+        if chk.get("action") == "CANCEL":
+            print(f"[{datetime.now()}] 🚫 [TELEGRAM PRE-FLIGHT] Aborting {meeting['name']}: cancelled per Telegram ({chk.get('reason')}).")
+            return
+        elif chk.get("action") == "RESCHEDULE":
+            print(f"[{datetime.now()}] ⏰ [TELEGRAM PRE-FLIGHT] Aborting current join for {meeting['name']}: rescheduled to {chk.get('new_time')}.")
+            return
+        elif chk.get("url_updated"):
+            meeting["url"] = chk.get("url")
+    except Exception as e:
+        print(f"[{datetime.now()}] ⚠️ Telegram pre-flight check exception: {e}")
+
     print(f"[{datetime.now()}] Starting preparation for {meeting['name']}")
     
     # 4 to 6 minutes humanizer delay
@@ -174,10 +208,27 @@ def join_meeting(meeting, skip_delay=False, class_end=None):
     temp_audio_wav = video_filename.replace(".mp4", ".wav")
     audio_filename = video_filename.replace(".mp4", ".mp3")
     
+    # Ensure thread is attached to user's interactive desktop so Chrome is visible on monitor
+    try:
+        import ctypes
+        u32 = ctypes.windll.user32
+        h_default = u32.OpenDesktopW("Default", 0, False, 0x01FF)
+        if h_default:
+            u32.SetThreadDesktop(h_default)
+    except Exception as e:
+        pass
+
+    base_script_dir = os.path.dirname(os.path.abspath(__file__))
+    raw_profile = current_config.get("settings", {}).get("chrome_user_data_dir", "./chrome_bot_profile")
+    if not os.path.isabs(raw_profile) or not os.path.exists(os.path.dirname(os.path.abspath(raw_profile))):
+        resolved_user_data_dir = os.path.normpath(os.path.join(base_script_dir, "chrome_bot_profile"))
+    else:
+        resolved_user_data_dir = raw_profile
+
     print(f"Launching Google Chrome for {meeting['name']} ({meeting['url']})...")
     with sync_playwright() as p:
         browser = p.chromium.launch_persistent_context(
-            user_data_dir=current_config["settings"]["chrome_user_data_dir"],
+            user_data_dir=resolved_user_data_dir,
             channel="chrome",
             headless=False,
             args=[
@@ -223,13 +274,24 @@ def join_meeting(meeting, skip_delay=False, class_end=None):
             updated_cfg = load_config()
             for m in updated_cfg.get("meetings", []):
                 if m["name"].lower() == meeting["name"].lower() and m["url"] != meeting["url"]:
-                    print(f"🔄 Link updated via Telegram during wait! Navigating to new URL: {m['url']}")
+                    print(f"🔄 Link updated via Telegram during wait! Updating target to: {m['url']}")
                     meeting["url"] = m["url"]
-                    page.goto(meeting["url"])
-                    time.sleep(6)
                     break
 
-            join_buttons = page.locator("button:has-text('Ask to join'), button:has-text('Demander à participer'), button:has-text('Join now'), button:has-text('Participer')")
+            # If page is not on target meeting room (e.g. after clicking Cancel which redirects to home), navigate to meeting URL
+            target_meet_id = meeting["url"].split("/")[-1].split("?")[0]
+            if target_meet_id not in (page.url or ""):
+                print(f"Navigating to {meeting['url']}...")
+                page.goto(meeting["url"])
+                time.sleep(6)
+                try:
+                    page.keyboard.press("Control+d")
+                    time.sleep(0.5)
+                    page.keyboard.press("Control+e")
+                except Exception:
+                    pass
+
+            join_buttons = page.locator("button:has-text('Ask to join'), button:has-text('Demander à participer'), button:has-text('Join now'), button:has-text('Participer'), button:has-text('Passer ici'), button:has-text('Switch here')")
             if join_buttons.count() > 0:
                 try:
                     join_buttons.first.click()
@@ -266,6 +328,9 @@ def join_meeting(meeting, skip_delay=False, class_end=None):
         if not admitted:
             print("\n❌ Could not join after 5 attempts. Professor did not accept. Waiting for next scheduled class.")
             browser.close()
+            key = (meeting["name"].lower(), datetime.now().date())
+            with _launch_lock:
+                _launched.discard(key)
             return
 
         # 3. Start Video & Dual Audio Recording
@@ -296,52 +361,104 @@ def join_meeting(meeting, skip_delay=False, class_end=None):
         start_time_str = datetime.now().strftime("%H:%M")
         peak_participants = 0
         unique_participants = set()
+        low_count_consecutive = 0
 
         while True:
             elapsed_minutes = (time.time() - meeting_start_time) / 60
             
-            # Scrape participants from Google Meet DOM
+            # Scrape live participants from Google Meet DOM
             current_count = 0
+            alone_detected = False
+
+            # Check direct Google Meet "Alone in call" indicators
             try:
-                # Open people panel if not already open
-                people_btn = page.locator("button[aria-label*='People'], button[aria-label*='personne'], button[aria-label*='Afficher les participants'], button[aria-label*='Show everyone']").first
-                if people_btn.count() > 0:
-                    panel = page.locator("div[role='listitem']")
-                    if panel.count() == 0:
-                        people_btn.click()
-                        time.sleep(1)
-                    
-                    names = page.locator("div[role='listitem'] span").all_inner_texts()
-                    for n in names:
-                        cleaned = n.strip()
-                        if len(cleaned) > 2 and not cleaned.isdigit() and "présentation" not in cleaned.lower() and "presentation" not in cleaned.lower():
-                            unique_participants.add(cleaned)
-                    
-                    current_count = max(panel.count(), len(unique_participants))
+                alone_loc = page.locator("text='You\\'re the only one here', text='Vous êtes le seul participant', text='Vous êtes seul dans la réunion', text='You\\'re the only one in the call', text='seule personne à participer'")
+                if alone_loc.count() > 0:
+                    alone_detected = True
+                    current_count = 1
             except Exception:
                 pass
+
+            if not alone_detected:
+                try:
+                    # 1. Read live count directly from People button badge / aria-label
+                    people_btn = page.locator("button[aria-label*='People'], button[aria-label*='personne'], button[aria-label*='Afficher les participants'], button[aria-label*='Show everyone']").first
+                    if people_btn.count() > 0:
+                        btn_aria = people_btn.get_attribute("aria-label") or ""
+                        btn_txt = people_btn.inner_text() or ""
+                        nums = re.findall(r'\b\d+\b', f"{btn_aria} {btn_txt}")
+                        if nums:
+                            current_count = int(nums[0])
+                        
+                        # Open panel if not open to scrape names and cross-verify count
+                        panel = page.locator("div[role='listitem']")
+                        if panel.count() == 0:
+                            try:
+                                people_btn.click()
+                                time.sleep(1)
+                            except Exception:
+                                pass
+                        
+                        panel_count = page.locator("div[role='listitem']").count()
+                        if panel_count > 0:
+                            current_count = max(current_count, panel_count)
+                            try:
+                                names = page.locator("div[role='listitem'] span").all_inner_texts()
+                                for n in names:
+                                    cleaned = n.strip()
+                                    if len(cleaned) > 2 and not cleaned.isdigit() and "présentation" not in cleaned.lower() and "presentation" not in cleaned.lower():
+                                        unique_participants.add(cleaned)
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
 
             if current_count > peak_participants:
                 peak_participants = current_count
 
-            # Check if host ended call
+            # Check if host ended call or kicked out
             try:
-                if page.locator("text='You left the meeting', text='L’appel est terminé', text='Vous avez quitté la réunion'").count() > 0:
-                    print(f"[{datetime.now()}] Meeting was ended by host.")
+                if page.locator("text='You left the meeting', text='L’appel est terminé', text='Vous avez quitté la réunion', text='Your request to join was denied', text='You were removed from the meeting'").count() > 0:
+                    print(f"[{datetime.now()}] Meeting was ended or closed by host.")
                     break
             except Exception:
                 pass
 
-            # Smart Exit Logic
-            if elapsed_minutes >= 50:
-                # If class had 10+ students and dropped to <= 4 (majority left, only AFKs remain)
-                if peak_participants >= 10 and current_count <= 4 and current_count < peak_participants * 0.35:
-                    print(f"[{datetime.now()}] 🚪 Smart Exit Triggered: Participants dropped from peak of {peak_participants} down to {current_count} (only AFKs remain). Leaving call.")
-                    break
-                # If small class from start (< 10) but now down to <= 2
-                elif peak_participants < 10 and current_count <= 2 and current_count > 0:
-                    print(f"[{datetime.now()}] 🚪 Smart Exit Triggered: Small class ended (participants: {current_count}). Leaving call.")
-                    break
+            # Smart Exit Logic (grace period: 5 minutes after joining)
+            if elapsed_minutes >= 5:
+                # Case 1: Alone in the call (or Google Meet says you're alone)
+                if alone_detected or (current_count <= 1 and peak_participants >= 1):
+                    low_count_consecutive += 1
+                    print(f"[{datetime.now()}] ⚠️ Lone participant detected (count={current_count}, peak={peak_participants}, consecutive={low_count_consecutive}/2)")
+                    if low_count_consecutive >= 2:
+                        print(f"[{datetime.now()}] 🚪 Smart Exit Triggered: Alone in call. Leaving meeting.")
+                        break
+                # Case 2: Only 1 other person left with the bot (all others left, only 1 AFK remains)
+                elif peak_participants >= 3 and current_count <= 2:
+                    low_count_consecutive += 1
+                    print(f"[{datetime.now()}] ⚠️ Near-empty call detected (count={current_count}, peak={peak_participants}, consecutive={low_count_consecutive}/2)")
+                    if low_count_consecutive >= 2:
+                        print(f"[{datetime.now()}] 🚪 Smart Exit Triggered: All other students left (count={current_count}). Leaving meeting.")
+                        break
+                # Case 3: Major drop from a large class (e.g. 10+ dropped down to <= 3)
+                elif peak_participants >= 10 and current_count <= 3 and current_count < peak_participants * 0.25:
+                    low_count_consecutive += 1
+                    print(f"[{datetime.now()}] ⚠️ Class mass exit detected (count={current_count}, peak={peak_participants}, consecutive={low_count_consecutive}/2)")
+                    if low_count_consecutive >= 2:
+                        print(f"[{datetime.now()}] 🚪 Smart Exit Triggered: Class concluded (dropped from {peak_participants} to {current_count}). Leaving meeting.")
+                        break
+                else:
+                    low_count_consecutive = 0
+
+            # Check for web dashboard exit signal
+            signal_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "exit_meeting.signal")
+            if os.path.exists(signal_file):
+                print(f"[{datetime.now()}] 🛑 User requested exit from dashboard. Leaving call.")
+                try:
+                    os.remove(signal_file)
+                except Exception:
+                    pass
+                break
 
             # Scheduled class end reached (next class may need the Chrome profile)
             if class_end and datetime.now() >= class_end:
@@ -396,15 +513,15 @@ def join_meeting(meeting, skip_delay=False, class_end=None):
         print("Processing audio & video...")
         try:
             subprocess.run(
-                ["ffmpeg", "-y", "-i", temp_audio_wav, "-acodec", "libmp3lame", "-q:a", "5", audio_filename],
+                ["ffmpeg", "-y", "-i", temp_audio_wav, "-ac", "1", "-acodec", "libmp3lame", "-b:a", "32k", audio_filename],
                 check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                timeout=120  # 2 min max for audio conversion
+                timeout=300  # 5 min max for audio conversion
             )
             if os.path.exists(temp_video_filename):
                 subprocess.run(
                     ["ffmpeg", "-y", "-i", temp_video_filename, "-i", audio_filename, "-c:v", "copy", "-c:a", "aac", video_filename],
                     check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                    timeout=180  # 3 min max for video mux
+                    timeout=400  # ~6.5 min max for video mux
                 )
                 print(f"Final video saved: {video_filename}")
                 os.remove(temp_video_filename)
@@ -474,6 +591,26 @@ def _class_window(meeting, ref=None):
     return start, start + timedelta(minutes=meeting.get("duration_minutes", 90))
 
 def launch_meeting(meeting, skip_delay=False):
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    if today_str in meeting.get("cancelled_dates", []):
+        print(f"[{datetime.now()}] 🚫 Skipping {meeting['name']}: marked cancelled for today ({today_str}).")
+        return
+
+    # ── Mandatory Telegram Pre-Flight Verification ──────────────────────────
+    try:
+        from telegram_preflight import run_telegram_preflight_check
+        chk = run_telegram_preflight_check(meeting)
+        if chk.get("action") == "CANCEL":
+            print(f"[{datetime.now()}] 🚫 [TELEGRAM PRE-FLIGHT] {meeting['name']} is CANCELLED per Telegram announcement: {chk.get('reason')}")
+            return
+        elif chk.get("action") == "RESCHEDULE":
+            print(f"[{datetime.now()}] ⏰ [TELEGRAM PRE-FLIGHT] {meeting['name']} was rescheduled to {chk.get('new_time')}. Deferring join.")
+            return
+        elif chk.get("url_updated"):
+            meeting["url"] = chk.get("url")
+    except Exception as e:
+        print(f"[{datetime.now()}] ⚠️ Telegram pre-flight check exception: {e}")
+
     key = (meeting["name"].lower(), datetime.now().date())
     with _launch_lock:
         if key in _launched:
@@ -490,7 +627,7 @@ def launch_meeting(meeting, skip_delay=False):
             traceback.print_exc()
 
     print(f"[{datetime.now()}] ▶️ Launching session thread for {meeting['name']}")
-    threading.Thread(target=_runner, daemon=True).start()
+    threading.Thread(target=_runner, daemon=True, name="session_runner").start()
 
 def catch_up_missed():
     """Handle a class already in progress (bot started late or schedule just changed).
@@ -498,9 +635,12 @@ def catch_up_missed():
     Later than that -> skip it (don't ask the prof to admit a late student)."""
     now = datetime.now()
     today = DAYS[now.weekday()]
+    today_str = now.strftime("%Y-%m-%d")
     cfg = load_config()
     grace = timedelta(minutes=cfg["settings"].get("late_join_cutoff_minutes", 10))
     for meeting in cfg.get("meetings", []):
+        if today_str in meeting.get("cancelled_dates", []):
+            continue
         if meeting["day_of_week"].lower() != today:
             continue
         start, end = _class_window(meeting, now)
@@ -527,15 +667,44 @@ def schedule_meetings():
         getattr(schedule.every(), day).at(time_str).do(launch_meeting, meeting)
         print(f"📅 Scheduled: {meeting['name']} every {day.capitalize()} at {time_str}")
 
+def get_pending_sessions_count_today():
+    now = datetime.now()
+    today = DAYS[now.weekday()]
+    today_str = now.strftime("%Y-%m-%d")
+    cfg = load_config()
+    if cfg.get("enabled", True) is False:
+        return 0
+    count = 0
+    for m in cfg.get("meetings", []):
+        if today_str in m.get("cancelled_dates", []):
+            continue
+        if m.get("day_of_week", "").lower() != today:
+            continue
+        _, end = _class_window(m, now)
+        if now < end:
+            count += 1
+    return count
+
+def is_session_active():
+    return any(t.name == "session_runner" and t.is_alive() for t in threading.enumerate())
+
 if __name__ == "__main__":
     print("=" * 60)
-    print("STUDY BOT SCHEDULER ACTIVE")
+    print("STUDY BOT ACTIVE (ON-DEMAND RUNNER)")
     print("=" * 60)
+
+    pending = get_pending_sessions_count_today()
+    if pending == 0:
+        print(f"[{datetime.now()}] [RAM SAVER] 💤 No upcoming study sessions programmed for today.")
+        print(f"[{datetime.now()}] [RAM SAVER] Shutting down bot to free RAM. (Telegram watcher remains active in background).")
+        sys.exit(0)
+
     schedule_meetings()
     catch_up_missed()
     last_mtime = os.path.getmtime(CONFIG_FILE)
 
     print("\nWaiting for scheduled classes... (Press Ctrl+C to stop)")
+    idle_checks = 0
     while True:
         schedule.run_pending()
         try:
@@ -548,4 +717,14 @@ if __name__ == "__main__":
                 catch_up_missed()
         except (Exception, SystemExit) as e:
             print(f"[WARN] Config reload failed: {e}")
+
+        idle_checks += 1
+        if idle_checks % 10 == 0:
+            active = is_session_active()
+            pending = get_pending_sessions_count_today()
+            if not active and pending == 0:
+                print(f"\n[{datetime.now()}] [RAM SAVER] 💤 All study sessions for today are complete/cancelled.")
+                print(f"[{datetime.now()}] [RAM SAVER] Shutting down bot to free RAM. (Telegram watcher remains active in background).")
+                sys.exit(0)
+
         time.sleep(1)

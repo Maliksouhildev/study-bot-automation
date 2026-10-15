@@ -2,20 +2,108 @@
   "enabled": true,
   "meetings": [
     {
-      "name": "Example Course (C)",
-      "url": "https://meet.google.com/xxx-yyyy-zzz",
-      "day_of_week": "Sunday",
-      "time": "08:30",
+      "name": "Industrial Sensors and Instrumentation (C)",
+      "url": "https://meet.google.com/drg-pmjq-xsu",
+      "day_of_week": "Thursday",
+      "time": "08:00",
       "duration_minutes": 90,
-      "professor": "PROFESSOR_NAME"
+      "professor": "HAFS"
     },
     {
-      "name": "Example Course (TD)",
-      "url": "https://meet.google.com/xxx-yyyy-zzz",
+      "name": "Industrial Sensors and Instrumentation (TD)",
+      "url": "https://meet.google.com/drg-pmjq-xsu",
       "day_of_week": "Sunday",
-      "time": "10:00",
+      "time": "09:30",
       "duration_minutes": 90,
-      "professor": "PROFESSOR_NAME"
+      "professor": "HAFS"
+    },
+    {
+      "name": "Innovation Management (C)",
+      "url": "https://meet.google.com/ybb-ppen-jds",
+      "day_of_week": "Sunday",
+      "time": "11:00",
+      "duration_minutes": 90,
+      "professor": "BABES"
+    },
+    {
+      "name": "Power Electronics (C)",
+      "url": "https://meet.google.com/joq-kgbf-mki",
+      "day_of_week": "Sunday",
+      "time": "13:00",
+      "duration_minutes": 90,
+      "professor": "MOKHNACHE"
+    },
+    {
+      "name": "Power Electronics (TD/TP)",
+      "url": "https://meet.google.com/joq-kgbf-mki",
+      "day_of_week": "Sunday",
+      "time": "14:30",
+      "duration_minutes": 90,
+      "professor": "MOKHNACHE"
+    },
+    {
+      "name": "Robotique (C)",
+      "url": "https://meet.google.com/jes-vyze-bou",
+      "day_of_week": "Sunday",
+      "time": "16:00",
+      "duration_minutes": 90,
+      "professor": "RAMDANI"
+    },
+    {
+      "name": "Control Systems 2 (C)",
+      "url": "https://meet.google.com/csb-hbbq-nok",
+      "day_of_week": "Tuesday",
+      "time": "08:00",
+      "duration_minutes": 90,
+      "professor": "GHERBI"
+    },
+    {
+      "name": "Embedded Computer 1 (C)",
+      "url": "https://meet.google.com/odi-yqwz-irp",
+      "day_of_week": "Tuesday",
+      "time": "09:30",
+      "duration_minutes": 90,
+      "professor": "MERABTI"
+    },
+    {
+      "name": "Embedded Computer 1 (TD)",
+      "url": "https://meet.google.com/odi-yqwz-irp",
+      "day_of_week": "Tuesday",
+      "time": "11:00",
+      "duration_minutes": 90,
+      "professor": "MERABTI"
+    },
+    {
+      "name": "Control Systems 2 (TD)",
+      "url": "https://meet.google.com/csb-hbbq-nok",
+      "day_of_week": "Tuesday",
+      "time": "13:00",
+      "duration_minutes": 90,
+      "professor": "GHERBI"
+    },
+    {
+      "name": "Electrical Machines and Drives (C)",
+      "url": "https://meet.google.com/pux-yiek-dcj",
+      "day_of_week": "Tuesday",
+      "time": "14:30",
+      "duration_minutes": 90,
+      "professor": "CHELLI"
+    },
+    {
+      "name": "Industrial Programmable Automation 1 (C)",
+      "url": "https://meet.google.com/pti-nsoj-hui",
+      "day_of_week": "Thursday",
+      "time": "08:30",
+      "duration_minutes": 90,
+      "professor": "RIGHI"
+    },
+    {
+      "name": "Industrial Programmable Automation 1 (TD)",
+      "url": "https://meet.google.com/pti-nsoj-hui",
+      "day_of_week": "Thursday",
+      "time": "09:30",
+      "duration_minutes": 90,
+      "professor": "RIGHI"
     }
   ],
   "settings": {

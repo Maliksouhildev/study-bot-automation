@@ -6,10 +6,14 @@ venv/
 .env
 
 # Session & Authentication Secrets (DO NOT COMMIT!)
-telegram_user.session
-telegram_user.session-journal
+*.session
+*.session*
+*.session-journal
+*.session-wal
+*.session-shm
 watcher.lock
 chrome_bot_profile/
+chrome_bot_profile*/
 
 # Personal config (each user creates their own from config.example.json)
 config.json
@@ -22,7 +26,11 @@ recordings/
 *.wav
 *.webm
 
-# QR code temp file
+# Temporary Images & Scraped OCR Files
+telegram_qr.png
+current_screen.png
+new_schedule_*.jpg
+n8n_workflows_tmp.json
 telegram_qr.png
 
 # Node dependencies

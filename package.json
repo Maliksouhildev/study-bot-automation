@@ -1,0 +1,19 @@
+{
+  "name": "study_bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.19.0",
+    "node-schedule": "^2.1.1",
+    "puppeteer": "^25.8.0",
+    "puppeteer-stream": "^3.0.23"
+  }
+}

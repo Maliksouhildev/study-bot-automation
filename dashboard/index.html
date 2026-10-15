@@ -353,6 +353,9 @@
       display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
       backdrop-filter: blur(8px); z-index: 200; align-items: center; justify-content: center; padding: 20px;
     }
+    .modal-overlay.active {
+      display: flex !important;
+    }
     .modal-box {
       background: #0b1120; border: 1px solid #283759; border-radius: 16px;
       max-width: 840px; width: 100%; max-height: 85vh; display: flex; flex-direction: column;
@@ -392,6 +395,326 @@
       font-family: 'JetBrains Mono', monospace; background: #172033;
       padding: 2px 6px; border-radius: 4px; color: var(--goog-blue);
     }
+
+    /* ═══════════════════════════════════════════════════════════════
+       JARVIS MISSION CONTROL & CHECKLIST MATRIX STYLES
+       ═══════════════════════════════════════════════════════════════ */
+    .nav-tab-group {
+      display: flex; gap: 8px; background: rgba(9, 14, 23, 0.8);
+      padding: 4px; border-radius: 12px; border: 1px solid var(--card-border);
+    }
+    .main-nav-tab {
+      background: transparent; color: var(--text-muted); border: none;
+      padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 0.85rem;
+      cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;
+    }
+    .main-nav-tab:hover { color: #fff; background: rgba(255,255,255,0.05); }
+    .main-nav-tab.active {
+      background: var(--accent); color: #fff; box-shadow: 0 0 12px var(--accent-glow);
+    }
+    .badge-count {
+      background: #ef4444; color: #fff; font-size: 0.7rem; font-weight: 800;
+      padding: 2px 7px; border-radius: 10px; min-width: 18px; text-align: center;
+    }
+    .btn-chime-test {
+      background: rgba(30, 41, 59, 0.8); border: 1px solid var(--card-border);
+      color: var(--cyan); padding: 6px 12px; border-radius: 20px; font-size: 0.78rem;
+      font-weight: 700; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 6px;
+    }
+    .btn-chime-test:hover {
+      background: var(--cyan); color: #000; box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
+    }
+
+    .mission-grid-top {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+    }
+    @media (max-width: 1100px) {
+      .mission-grid-top { grid-template-columns: 1fr; }
+    }
+    .mission-card {
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 16px; padding: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .mission-card-head {
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px;
+    }
+    .mission-card-title {
+      font-size: 1.05rem; font-weight: 800; display: flex; align-items: center; gap: 8px; color: #fff;
+    }
+    .mission-card-subtitle {
+      font-size: 0.74rem; color: var(--text-muted);
+    }
+
+    .module-slider-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    }
+    @media (max-width: 768px) {
+      .module-slider-grid { grid-template-columns: 1fr; }
+    }
+    .module-item-box {
+      background: #090e17; border: 1px solid var(--card-border);
+      border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+      transition: border-color 0.2s;
+    }
+    .module-item-box:hover { border-color: rgba(255,255,255,0.2); }
+    .mod-box-header { display: flex; justify-content: space-between; align-items: flex-start; }
+    .mod-box-title { font-size: 0.86rem; font-weight: 700; color: #f1f5f9; line-height: 1.25; }
+    .mod-box-prof { font-size: 0.7rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+    .mod-slider-row { display: flex; align-items: center; gap: 12px; }
+    .mod-slider {
+      flex: 1; -webkit-appearance: none; appearance: none; height: 6px;
+      border-radius: 3px; background: #1e293b; outline: none; transition: background 0.2s;
+    }
+    .mod-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none; width: 16px; height: 16px;
+      border-radius: 50%; background: var(--cyan); cursor: pointer; box-shadow: 0 0 8px var(--cyan);
+    }
+    .mod-slider-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: 800;
+      min-width: 42px; text-align: right; color: var(--cyan);
+    }
+    .mod-tier-badge {
+      font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; width: fit-content;
+    }
+
+    .projects-grid {
+      display: flex; flex-direction: column; gap: 12px;
+      max-height: 580px; overflow-y: auto; padding-right: 6px;
+    }
+    .projects-grid::-webkit-scrollbar { width: 6px; }
+    .projects-grid::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    .project-item-box {
+      background: #090e17; border: 1px solid var(--card-border);
+      border-left: 5px solid var(--proj-color, #38bdf8);
+      border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px;
+      transition: all 0.2s ease; box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    }
+    .project-item-box:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4), 0 0 16px var(--proj-glow, rgba(56,189,248,0.15));
+    }
+    .proj-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .proj-identity { display: flex; align-items: center; gap: 12px; }
+    .proj-avatar-box {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: #111827; border: 1px solid rgba(255,255,255,0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem; flex-shrink: 0; overflow: hidden;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.4);
+    }
+    .proj-avatar-box img { width: 24px; height: 24px; object-fit: contain; }
+    .proj-title-group { display: flex; flex-direction: column; gap: 2px; }
+    .proj-name { font-size: 0.94rem; font-weight: 800; color: #fff; }
+    .proj-cat {
+      font-size: 0.68rem; padding: 2px 8px; border-radius: 6px;
+      font-weight: 700; width: fit-content;
+    }
+    .proj-desc { font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; }
+    .proj-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; align-items: center; }
+    .btn-proj-link {
+      background: #172033; color: #38bdf8; border: 1px solid #1e293b;
+      padding: 5px 10px; border-radius: 6px; font-size: 0.74rem; font-weight: 700;
+      text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;
+    }
+    .btn-proj-link:hover { background: #38bdf8; color: #000; }
+    .btn-proj-del {
+      background: transparent; color: #64748b; border: none; font-size: 0.85rem;
+      cursor: pointer; padding: 4px 6px; border-radius: 4px; margin-left: auto; transition: all 0.2s;
+    }
+    .btn-proj-del:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
+    .color-preset-btn {
+      width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent;
+      cursor: pointer; transition: transform 0.15s;
+    }
+    .color-preset-btn:hover { transform: scale(1.15); border-color: #fff; }
+    .emoji-preset-btn {
+      background: #172033; border: 1px solid #334155; border-radius: 8px;
+      font-size: 1.1rem; padding: 4px 8px; cursor: pointer; transition: all 0.15s;
+    }
+    .emoji-preset-btn:hover { background: #334155; transform: scale(1.1); }
+
+    .mission-split-layout {
+      display: grid; grid-template-columns: 1fr 420px; gap: 24px;
+    }
+    @media (max-width: 1200px) {
+      .mission-split-layout { grid-template-columns: 1fr; }
+    }
+
+    .tasks-header-bar {
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+    }
+    .task-filter-tabs {
+      display: flex; background: #090e17; border: 1px solid var(--card-border);
+      padding: 3px; border-radius: 8px; gap: 4px;
+    }
+    .task-filter-tab {
+      background: transparent; color: var(--text-muted); border: none;
+      padding: 5px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer;
+    }
+    .task-filter-tab.active { background: var(--accent); color: #fff; }
+    .btn-add-task {
+      background: linear-gradient(135deg, var(--emerald), #059669); color: #fff; border: none;
+      padding: 7px 14px; border-radius: 8px; font-weight: 800; font-size: 0.78rem;
+      cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 0 10px var(--emerald-glow);
+    }
+    .task-cards-list { display: flex; flex-direction: column; gap: 10px; }
+    .task-card {
+      background: #090e17; border: 1px solid var(--card-border); border-radius: 10px;
+      padding: 12px 14px; display: flex; align-items: flex-start; gap: 12px; transition: all 0.2s;
+    }
+    .task-card:hover { border-color: rgba(255,255,255,0.2); }
+    .task-card.completed { opacity: 0.55; }
+    .task-card.completed .task-text-title { text-decoration: line-through; }
+    .task-check-btn {
+      width: 20px; height: 20px; border-radius: 6px; border: 2px solid var(--card-border);
+      background: transparent; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; flex-shrink: 0; margin-top: 2px; color: transparent; font-weight: 800;
+    }
+    .task-card.completed .task-check-btn {
+      background: var(--emerald); border-color: var(--emerald); color: #fff;
+    }
+    .task-body { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .task-text-title { font-size: 0.88rem; font-weight: 700; color: #fff; }
+    .task-text-desc { font-size: 0.76rem; color: #94a3b8; line-height: 1.4; }
+    .task-meta-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+    .task-cat-pill {
+      font-size: 0.68rem; background: #1e293b; color: #94a3b8; padding: 2px 6px; border-radius: 4px;
+    }
+    .task-date-pill {
+      font-size: 0.68rem; font-family: 'JetBrains Mono', monospace; color: #64748b;
+    }
+    .task-rolled-badge {
+      font-size: 0.68rem; background: rgba(245, 158, 11, 0.2); color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3); padding: 2px 7px; border-radius: 4px; font-weight: 700;
+    }
+    .task-priority-high { color: #f43f5e; font-weight: 800; font-size: 0.72rem; }
+    .task-priority-med { color: #fbbf24; font-weight: 700; font-size: 0.72rem; }
+    .task-priority-low { color: #10b981; font-weight: 600; font-size: 0.72rem; }
+    .btn-task-del {
+      background: transparent; border: none; color: #64748b; cursor: pointer;
+      font-size: 0.85rem; padding: 4px; transition: color 0.2s;
+    }
+    .btn-task-del:hover { color: #f43f5e; }
+
+    .intel-feed-card {
+      background: #090e17; border: 1px solid var(--card-border); border-radius: 12px;
+      padding: 14px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .intel-feed-head { display: flex; justify-content: space-between; align-items: center; }
+    .intel-type-badge {
+      font-size: 0.68rem; font-weight: 800; text-transform: uppercase; padding: 2px 6px; border-radius: 4px;
+    }
+    .intel-type-hw { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+    .intel-type-exam { background: rgba(244, 63, 94, 0.2); color: #f43f5e; }
+    .intel-type-tp { background: rgba(139, 92, 246, 0.2); color: #a78bfa; }
+    .btn-convert-intel {
+      background: #172033; color: var(--cyan); border: 1px solid #1e293b;
+      font-size: 0.72rem; font-weight: 700; padding: 4px 8px; border-radius: 6px; cursor: pointer;
+    }
+    .btn-convert-intel:hover { background: var(--cyan); color: #000; }
+
+    .jarvis-console {
+      background: #060911; border: 1px solid var(--card-border); border-radius: 16px;
+      display: flex; flex-direction: column; height: 620px; box-shadow: 0 0 30px rgba(37,99,235,0.15);
+    }
+    .jarvis-top {
+      padding: 14px 16px; border-bottom: 1px solid var(--card-border);
+      display: flex; align-items: center; justify-content: space-between;
+      background: linear-gradient(180deg, #0f172a, #060911); border-radius: 16px 16px 0 0;
+    }
+    .jarvis-avatar-row { display: flex; align-items: center; gap: 10px; }
+    .jarvis-orb {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: radial-gradient(circle, #38bdf8 0%, #2563eb 70%);
+      box-shadow: 0 0 12px #38bdf8; animation: pulse 2.5s infinite;
+    }
+    .jarvis-chat-log {
+      flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
+      font-size: 0.82rem; line-height: 1.5;
+    }
+    .jarvis-msg {
+      max-width: 90%; padding: 10px 14px; border-radius: 12px;
+    }
+    .jarvis-msg.ai {
+      align-self: flex-start; background: #0f172a; border: 1px solid var(--card-border);
+      color: #e2e8f0; border-bottom-left-radius: 2px;
+    }
+    .jarvis-msg.user {
+      align-self: flex-end; background: var(--accent); color: #fff;
+      border-bottom-right-radius: 2px;
+    }
+    .jarvis-chips {
+      display: flex; gap: 6px; flex-wrap: wrap; padding: 8px 14px; background: rgba(15,23,42,0.6);
+      border-top: 1px solid rgba(255,255,255,0.04);
+    }
+    .jarvis-chip {
+      background: #172033; color: #94a3b8; border: 1px solid #1e293b; font-size: 0.72rem;
+      padding: 4px 8px; border-radius: 12px; cursor: pointer; transition: all 0.2s;
+    }
+    .jarvis-chip:hover { color: #fff; border-color: var(--cyan); }
+    .jarvis-input-area {
+      padding: 12px 14px; border-top: 1px solid var(--card-border); display: flex; gap: 8px;
+    }
+    .jarvis-input {
+      flex: 1; background: #090e17; border: 1px solid var(--card-border); border-radius: 8px;
+      padding: 9px 12px; color: #fff; font-size: 0.82rem; outline: none; font-family: inherit;
+    }
+    .jarvis-input:focus { border-color: var(--cyan); }
+    .btn-jarvis-send {
+      background: var(--accent); color: #fff; border: none; padding: 0 16px; border-radius: 8px;
+      font-weight: 800; cursor: pointer; transition: background 0.2s;
+    }
+    .btn-jarvis-send:hover { background: #1d4ed8; }
+
+    .task-form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .task-form-label { font-size: 0.75rem; font-weight: 700; color: #94a3b8; }
+    .task-form-input, .task-form-select, .task-form-textarea {
+      background: #090e17; border: 1px solid var(--card-border); border-radius: 8px;
+      padding: 8px 12px; color: #fff; font-size: 0.85rem; font-family: inherit; outline: none;
+    }
+    .task-form-input:focus, .task-form-select:focus, .task-form-textarea:focus { border-color: var(--accent); }
+
+    /* LIVE MEETING CONTROL BAR */
+    .live-meeting-bar {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9));
+      border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 14px; padding: 14px 20px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;
+      box-shadow: 0 0 20px rgba(37, 99, 235, 0.3), inset 0 0 10px rgba(56, 189, 248, 0.1);
+      animation: livePulseGlow 3s infinite;
+    }
+    @keyframes livePulseGlow {
+      0% { border-color: rgba(56, 189, 248, 0.4); box-shadow: 0 0 14px rgba(37, 99, 235, 0.25); }
+      50% { border-color: rgba(56, 189, 248, 0.9); box-shadow: 0 0 26px rgba(37, 99, 235, 0.55); }
+      100% { border-color: rgba(56, 189, 248, 0.4); box-shadow: 0 0 14px rgba(37, 99, 235, 0.25); }
+    }
+    .live-status-info { display: flex; align-items: center; gap: 14px; }
+    .live-pulse-dot {
+      width: 12px; height: 12px; border-radius: 50%; background: #ef4444;
+      box-shadow: 0 0 12px #ef4444; animation: pulse 1.5s infinite; flex-shrink: 0;
+    }
+    .live-meeting-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .btn-live-attend {
+      background: linear-gradient(135deg, #0284c7, #2563eb); color: #fff; border: none;
+      padding: 8px 14px; border-radius: 8px; font-weight: 800; font-size: 0.8rem;
+      cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+      box-shadow: 0 0 10px rgba(2, 132, 199, 0.4);
+    }
+    .btn-live-attend:hover { background: #0369a1; transform: translateY(-1px); }
+    .btn-live-focus {
+      background: #1e293b; color: #38bdf8; border: 1px solid #334155;
+      padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 0.8rem;
+      cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+    }
+    .btn-live-focus:hover { background: #334155; color: #fff; }
+    .btn-live-exit {
+      background: linear-gradient(135deg, #dc2626, #b91c1c); color: #fff; border: none;
+      padding: 8px 14px; border-radius: 8px; font-weight: 800; font-size: 0.8rem;
+      cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+      box-shadow: 0 0 10px rgba(220, 38, 38, 0.4);
+    }
+    .btn-live-exit:hover { background: #991b1b; transform: translateY(-1px); }
   </style>
 </head>
 <body>
@@ -406,7 +729,14 @@
       </div>
     </div>
 
-    <div class="nav-actions">
+    <!-- MAIN NAVIGATION TABS -->
+    <div class="nav-tab-group">
+      <button class="main-nav-tab active" id="btnTabTimetable" onclick="switchMainTab('timetable')">📅 Timetable & Sessions</button>
+      <button class="main-nav-tab" id="btnTabJarvis" onclick="switchMainTab('jarvis')">⚡ Jarvis Mission Control <span class="badge-count" id="headerTaskBadge">0</span></button>
+    </div>
+
+    <div class="nav-actions" style="display: flex; align-items: center; gap: 12px;">
+      <button class="btn-chime-test" onclick="playJarvisChime(true)" title="Test Sci-Fi Alert Chime">🔔 Chime</button>
       <div class="live-clock">
         <div class="live-dot"></div>
         <span id="liveClockDisplay">Live Time</span>
@@ -417,8 +747,40 @@
   <!-- APP CONTAINER -->
   <div class="app-container">
 
-    <!-- 1. OFFICIAL UNIVERSITY TIMETABLE -->
-    <div class="program-card">
+    <!-- TAB 1: TIMETABLE & ARCHIVE SESSIONS VIEW -->
+    <div id="viewTimetable" style="display: flex; flex-direction: column; gap: 24px;">
+
+      <!-- LIVE ACTIVE SESSION CONTROL BANNER -->
+      <div id="liveMeetingBar" class="live-meeting-bar" style="display: none;">
+        <div class="live-status-info">
+          <div class="live-pulse-dot"></div>
+          <div>
+            <div style="font-weight: 800; color: #fff; font-size: 0.96rem; display: flex; align-items: center; gap: 8px;">
+              <span>🔴 LIVE SESSION RUNNING:</span>
+              <span id="liveMeetingName" style="color: var(--cyan);">Loading class...</span>
+            </div>
+            <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 2px;">
+              Prof. <span id="liveMeetingProf" style="color: #fff; font-weight: 700;">--</span> •
+              Time: <span id="liveMeetingTime" style="font-family: 'JetBrains Mono', monospace; color: var(--cyan);">--</span> •
+              <span style="color: var(--emerald);">Bot is actively connected</span>
+            </div>
+          </div>
+        </div>
+        <div class="live-meeting-actions">
+          <button class="btn-live-attend" onclick="attendLiveMeeting()" title="Opens Google Meet in your personal browser so you can speak or turn on mic">
+            <span>🗣️</span> Join Personally (To Speak)
+          </button>
+          <button class="btn-live-focus" onclick="focusBotChromeWindow()" title="Brings the bot's automated Chrome window to the front of your desktop">
+            <span>🪟</span> View Bot's Window
+          </button>
+          <button class="btn-live-exit" onclick="exitLiveMeeting()" title="Instruct the bot to hang up and leave call immediately">
+            <span>🛑</span> Exit Meeting Now
+          </button>
+        </div>
+      </div>
+
+      <!-- 1. OFFICIAL UNIVERSITY TIMETABLE -->
+      <div class="program-card">
       <div class="program-header-row">
         <div class="program-title-wrap">
           <span>📅</span>
@@ -498,7 +860,267 @@
       </div>
 
     </div>
+    <!-- END drilldown-layout (detailsSection) -->
 
+  </div>
+  <!-- END TAB 1 (viewTimetable) -->
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       TAB 2: JARVIS MISSION CONTROL, TASKS & PROGRESS VIEW
+       ═══════════════════════════════════════════════════════════════ -->
+  <div id="viewJarvisControl" style="display: none; flex-direction: column; gap: 24px;">
+
+      <!-- TOP ROW: ACADEMIC MODULE MASTERY + PROJECTS MATRIX -->
+      <div class="mission-grid-top">
+        
+        <!-- 1. ACADEMIC CURRICULUM MASTERY SLIDERS -->
+        <div class="mission-card">
+          <div class="mission-card-head">
+            <div>
+              <div class="mission-card-title"><span>📊</span> Academic Curriculum Mastery</div>
+              <div class="mission-card-subtitle">Real-time completion tracking across all 8 L3 Automatique modules</div>
+            </div>
+            <div id="masteryOverallBadge" class="mod-tier-badge" style="background: rgba(37,99,235,0.2); color: #60a5fa; font-size: 0.75rem;">0% Average</div>
+          </div>
+          <div class="module-slider-grid" id="moduleSlidersContainer">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- 2. PROJECTS & WORKFLOWS HUB -->
+        <div class="mission-card">
+          <div class="mission-card-head">
+            <div>
+              <div class="mission-card-title"><span>⚡</span> Projects & Automation Hub</div>
+              <div class="mission-card-subtitle">Direct links to active n8n production pipelines & local web apps</div>
+            </div>
+            <button class="btn-proj-link" style="border-radius: 20px; cursor: pointer;" onclick="openAddProjectPrompt()">+ New Project</button>
+          </div>
+          <div class="projects-grid" id="projectsContainer">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- MAIN SPLIT: CHECKLIST MATRIX (LEFT) + JARVIS AI ADVISOR (RIGHT) -->
+      <div class="mission-split-layout">
+
+        <!-- LEFT COLUMN: TO-DO CHECKLIST & PROFESSOR INTEL FEED -->
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+
+          <!-- SMART TO-DO CHECKLIST -->
+          <div class="mission-card">
+            <div class="mission-card-head">
+              <div class="tasks-header-bar" style="width: 100%;">
+                <div class="mission-card-title"><span>✅</span> Smart Checklist & Tasks</div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <div class="task-filter-tabs">
+                    <button class="task-filter-tab active" onclick="setTaskFilter('all', this)">All</button>
+                    <button class="task-filter-tab" onclick="setTaskFilter('today', this)">Today</button>
+                    <button class="task-filter-tab" onclick="setTaskFilter('rolled', this)">Overdue (Rolled)</button>
+                    <button class="task-filter-tab" onclick="setTaskFilter('completed', this)">Done</button>
+                  </div>
+                  <button class="btn-add-task" onclick="openAddTaskModal()">+ Add Task</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="task-cards-list" id="taskListContainer">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- AUTO-EXTRACTED PROFESSOR INTEL & HOMEWORK ALERTS -->
+          <div class="mission-card">
+            <div class="mission-card-head">
+              <div>
+                <div class="mission-card-title"><span>🎓</span> Auto-Extracted Professor Intel</div>
+                <div class="mission-card-subtitle">Homework, upcoming exams & TP guidelines extracted directly from lecture transcripts</div>
+              </div>
+              <button class="btn-chime-test" onclick="loadProfessorIntel()">🔄 Refresh Intel</button>
+            </div>
+            <div class="task-cards-list" id="profIntelContainer">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: JARVIS OMNIPOTENT AI ADVISOR -->
+        <div class="jarvis-console">
+          <div class="jarvis-top">
+            <div class="jarvis-avatar-row">
+              <div class="jarvis-orb"></div>
+              <div>
+                <div style="font-size: 0.92rem; font-weight: 800; color: #fff;">JARVIS Advisor</div>
+                <div style="font-size: 0.68rem; color: var(--cyan); font-family: 'JetBrains Mono', monospace;">Autonomous Academic Strategist</div>
+              </div>
+            </div>
+            <span style="font-size: 0.72rem; color: var(--emerald); font-weight: 700;">● Online</span>
+          </div>
+
+          <!-- CHAT LOG -->
+          <div class="jarvis-chat-log" id="jarvisChatLog">
+            <div class="jarvis-msg ai">
+              <strong>JARVIS:</strong> Greetings, Sir. All university modules, live n8n workflows, and academic timelines are loaded. How would you like to structure your priorities today?
+            </div>
+          </div>
+
+          <!-- SUGGESTION CHIPS -->
+          <div class="jarvis-chips">
+            <span class="jarvis-chip" onclick="quickJarvisPrompt('Jarvis, what are my highest priority tasks today?')">🎯 What should I do first?</span>
+            <span class="jarvis-chip" onclick="quickJarvisPrompt('Analyze my module progress and advise on weak areas.')">📊 Module Progress</span>
+            <span class="jarvis-chip" onclick="quickJarvisPrompt('Prioritize my schedule before tomorrow\'s classes.')">⚡ Optimize Schedule</span>
+          </div>
+
+          <!-- INPUT AREA -->
+          <div class="jarvis-input-area">
+            <input type="text" class="jarvis-input" id="jarvisInputText" placeholder="Ask Jarvis or say 'Add task: Review Bode plots'..." onkeydown="if(event.key==='Enter') sendJarvisMessage()">
+            <button class="btn-jarvis-send" onclick="sendJarvisMessage()">Send</button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- POPUP MODAL: ADD NEW TASK -->
+  <div class="modal-overlay" id="addTaskModal">
+    <div class="modal-box" style="max-width: 520px;">
+      <div class="modal-head">
+        <div class="modal-title">➕ Create New Task</div>
+        <button class="modal-close" onclick="closeModal('addTaskModal')">✕</button>
+      </div>
+      <div class="modal-body" style="white-space: normal; font-family: inherit; color: inherit; display: flex; flex-direction: column; gap: 14px;">
+        <div class="task-form-group">
+          <label class="task-form-label">Task Title</label>
+          <input type="text" id="newTaskTitle" class="task-form-input" placeholder="e.g. Complete Control Systems TD Sheet" onkeydown="if(event.key==='Enter') submitNewTask()">
+        </div>
+        <div class="task-form-group">
+          <label class="task-form-label">Detailed Description / Context for AI</label>
+          <textarea id="newTaskDesc" class="task-form-textarea" rows="3" placeholder="Provide context so Jarvis can advise on dependencies and optimal execution..."></textarea>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="task-form-group">
+            <label class="task-form-label">Category / Module / Project</label>
+            <select id="newTaskCategory" class="task-form-select">
+              <option value="Control Systems 2 (Systèmes Asservis 2)">Control Systems 2</option>
+              <option value="Industrial Sensors & Instrumentation">Industrial Sensors</option>
+              <option value="Embedded Computer 1 (Calculateur Embarqué)">Embedded Computer 1</option>
+              <option value="Power Electronics (Électronique de Puissance)">Power Electronics</option>
+              <option value="Industrial Programmable Automation 1 (API 1)">Industrial Automation (API)</option>
+              <option value="Robotics (Robotique)">Robotics</option>
+              <option value="Innovation Management">Innovation Management</option>
+              <option value="Electrical Machines and Drives">Electrical Machines</option>
+              <option value="Study Bot Processing Workflow">Study Bot Workflow</option>
+              <option value="Chatbot Farm SaaS">Chatbot Farm SaaS</option>
+              <option value="YouTube Shorts Automation">YouTube Shorts Automation</option>
+              <option value="General">General / Personal</option>
+            </select>
+          </div>
+          <div class="task-form-group">
+            <label class="task-form-label">Priority</label>
+            <select id="newTaskPriority" class="task-form-select">
+              <option value="high">High Priority</option>
+              <option value="medium" selected>Medium Priority</option>
+              <option value="low">Low Priority</option>
+            </select>
+          </div>
+        </div>
+        <div class="task-form-group">
+          <label class="task-form-label">Due Date (Auto-rolls over if not completed)</label>
+          <input type="date" id="newTaskDueDate" class="task-form-input">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-action" style="background: #334155; color: #fff;" onclick="closeModal('addTaskModal')">Cancel</button>
+        <button class="btn-action btn-action-prompt" onclick="submitNewTask()">Save Task</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP MODAL FOR ADDING PROJECT -->
+  <div class="modal-overlay" id="addProjectModal">
+    <div class="modal-box" style="max-width: 560px;">
+      <div class="modal-head">
+        <div class="modal-title">⚡ Add New Project / Workflow</div>
+        <button class="modal-close" onclick="closeModal('addProjectModal')">✕</button>
+      </div>
+      <div style="padding: 20px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto;">
+        <div class="task-form-group">
+          <label class="task-form-label">Project Name</label>
+          <input type="text" id="newProjName" class="task-form-input" placeholder="e.g. Lead Hunter AI, CS50 Week 2..." onkeydown="if(event.key==='Enter') submitNewProject()">
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="task-form-group">
+            <label class="task-form-label">Category</label>
+            <input type="text" id="newProjCategory" class="task-form-input" placeholder="e.g. n8n Automation, Web & AI...">
+          </div>
+          <div class="task-form-group">
+            <label class="task-form-label">Accent Color</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input type="color" id="newProjColor" value="#38bdf8" style="background: none; border: none; width: 34px; height: 34px; cursor: pointer;">
+              <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                <button type="button" class="color-preset-btn" style="background: #ef4444;" onclick="document.getElementById('newProjColor').value='#ef4444'"></button>
+                <button type="button" class="color-preset-btn" style="background: #22c55e;" onclick="document.getElementById('newProjColor').value='#22c55e'"></button>
+                <button type="button" class="color-preset-btn" style="background: #3b82f6;" onclick="document.getElementById('newProjColor').value='#3b82f6'"></button>
+                <button type="button" class="color-preset-btn" style="background: #a855f7;" onclick="document.getElementById('newProjColor').value='#a855f7'"></button>
+                <button type="button" class="color-preset-btn" style="background: #f59e0b;" onclick="document.getElementById('newProjColor').value='#f59e0b'"></button>
+                <button type="button" class="color-preset-btn" style="background: #06b6d4;" onclick="document.getElementById('newProjColor').value='#06b6d4'"></button>
+                <button type="button" class="color-preset-btn" style="background: #ec4899;" onclick="document.getElementById('newProjColor').value='#ec4899'"></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="task-form-group">
+          <label class="task-form-label">Icon / Symbol</label>
+          <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px;">
+            <input type="text" id="newProjIcon" class="task-form-input" style="width: 70px; text-align: center; font-size: 1.2rem;" value="🚀">
+            <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+              <button type="button" class="emoji-preset-btn" onclick="document.getElementById('newProjIcon').value='🎓'">🎓</button>
+              <button type="button" class="emoji-preset-btn" onclick="document.getElementById('newProjIcon').value='⚽'">⚽</button>
+              <button type="button" class="emoji-preset-btn" onclick="document.getElementById('newProjIcon').value='🤖'">🤖</button>
+              <button type="button" class="emoji-preset-btn" onclick="document.getElementById('newProjIcon').value='🎙️'">🎙️</button>
+              <button type="button" class="emoji-preset-btn" onclick="document.getElementById('newProjIcon').value='🏨'">🏨</button>
+              <button type="button" class="emoji-preset-btn" onclick="document.getElementById('newProjIcon').value='💼'">💼</button>
+              <button type="button" class="emoji-preset-btn" onclick="document.getElementById('newProjIcon').value='🎯'">🎯</button>
+              <button type="button" class="emoji-preset-btn" onclick="document.getElementById('newProjIcon').value='▶️'">▶️</button>
+              <button type="button" class="emoji-preset-btn" onclick="document.getElementById('newProjIcon').value='🇩🇿'">🇩🇿</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="task-form-group">
+          <label class="task-form-label">Logo / Image URL (Optional)</label>
+          <input type="text" id="newProjImage" class="task-form-input" placeholder="https://... (PNG/SVG logo)">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="task-form-group">
+            <label class="task-form-label">n8n Workflow URL</label>
+            <input type="text" id="newProjN8nUrl" class="task-form-input" placeholder="http://localhost:5678/workflow/...">
+          </div>
+          <div class="task-form-group">
+            <label class="task-form-label">Web / App URL</label>
+            <input type="text" id="newProjWebUrl" class="task-form-input" placeholder="http://localhost:3000 or https://...">
+          </div>
+        </div>
+
+        <div class="task-form-group">
+          <label class="task-form-label">Brief Description</label>
+          <textarea id="newProjDesc" class="task-form-input" rows="2" placeholder="Explain what this automation or project does..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-action" style="background: #334155; color: #fff;" onclick="closeModal('addProjectModal')">Cancel</button>
+        <button class="btn-action btn-action-prompt" onclick="submitNewProject()">Create Project</button>
+      </div>
+    </div>
   </div>
 
   <!-- POPUP MODAL FOR TRANSCRIPT -->
@@ -545,35 +1167,35 @@
     };
 
     const SLOTS = [
-      { id: "0830", label: "8:30 - 10:00", start: "08:30", end: "10:00" },
-      { id: "1000", label: "10:00 - 11:30", start: "10:00", end: "11:30" },
-      { id: "1130", label: "11:30 - 13:00", start: "11:30", end: "13:00" },
-      { id: "1400", label: "14:00 - 15:30", start: "14:00", end: "15:30" },
-      { id: "1530", label: "15:30 - 17:00", start: "15:30", end: "17:00" },
-      { id: "1700", label: "17:00 - 18:30", start: "17:00", end: "18:30" }
+      { id: "0800", label: "08:00 - 09:30", start: "08:00", end: "09:30" },
+      { id: "0930", label: "09:30 - 11:00", start: "09:30", end: "11:00" },
+      { id: "1100", label: "11:00 - 12:30", start: "11:00", end: "12:30" },
+      { id: "1300", label: "13:00 - 14:30", start: "13:00", end: "14:30" },
+      { id: "1430", label: "14:30 - 16:00", start: "14:30", end: "16:00" },
+      { id: "1600", label: "16:00 - 17:30", start: "16:00", end: "17:30" }
     ];
 
     const DAYS = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
 
-    const CURRICULUM = {
+    let CURRICULUM = {
       // Sunday
-      "Sunday_0830": { name: "Industrial Sensors and Instrumentation (C)", prof: "HAFS", type: "C", css: "course-sensors", meet: "https://meet.google.com/drg-pmjq-xsu", hasRec: false, recIssue: "PC was rebooting during class start; recording process was restarted." },
-      "Sunday_1000": { name: "Industrial Sensors and Instrumentation (Tutorial)", prof: "HAFS", type: "TD", css: "course-sensors", meet: "https://meet.google.com/drg-pmjq-xsu", hasRec: false, recIssue: "Audio input was set to muted stereo mix." },
-      "Sunday_1130": { name: "Innovation Management (C)", prof: "BABES", type: "C", css: "course-innovation", meet: "https://meet.google.com/ybb-ppen-jds", hasRec: true },
-      "Sunday_1400": { name: "Power Electronics (C)", prof: "MOKHNACHE", type: "C", css: "course-power", meet: "https://meet.google.com/joq-kgbf-mki", hasRec: true },
-      "Sunday_1530": { name: "Power Electronics (Tutorial / Lab-Work)", prof: "MOKHNACHE", type: "TD/TP", css: "course-power-td", meet: "https://meet.google.com/joq-kgbf-mki", hasRec: true },
-      "Sunday_1700": { name: "Robotique (C)", prof: "RAMDANI", type: "C", css: "course-robotique", meet: "https://meet.google.com/bfv-iipp-qzb", hasRec: false, recIssue: "Professor admitted students late; session interrupted." },
+      "Sunday_0800": { name: "Industrial Sensors and Instrumentation (C)", prof: "HAFS", type: "C", css: "course-sensors", meet: "https://meet.google.com/drg-pmjq-xsu", hasRec: false, recIssue: "PC was rebooting during class start; recording process was restarted." },
+      "Sunday_0930": { name: "Industrial Sensors and Instrumentation (Tutorial)", prof: "HAFS", type: "TD", css: "course-sensors", meet: "https://meet.google.com/drg-pmjq-xsu", hasRec: false, recIssue: "Audio input was set to muted stereo mix." },
+      "Sunday_1100": { name: "Innovation Management (C)", prof: "BABES", type: "C", css: "course-innovation", meet: "https://meet.google.com/ybb-ppen-jds", hasRec: true },
+      "Sunday_1300": { name: "Power Electronics (C)", prof: "MOKHNACHE", type: "C", css: "course-power", meet: "https://meet.google.com/joq-kgbf-mki", hasRec: true },
+      "Sunday_1430": { name: "Power Electronics (Tutorial / Lab-Work)", prof: "MOKHNACHE", type: "TD/TP", css: "course-power-td", meet: "https://meet.google.com/joq-kgbf-mki", hasRec: true },
+      "Sunday_1600": { name: "Robotique (C)", prof: "RAMDANI", type: "C", css: "course-robotique", meet: "https://meet.google.com/jes-vyze-bou", hasRec: false, recIssue: "Professor admitted students late; session interrupted." },
 
       // Tuesday
-      "Tuesday_0830": { name: "Control Systems 2 (C)", prof: "GHERBI", type: "C", css: "course-control", meet: "https://meet.google.com/csb-hbbq-nok", hasRec: false, recIssue: "Session scheduled for next Tuesday." },
-      "Tuesday_1000": { name: "Embedded Computer 1 (C)", prof: "MERABTI", type: "C", css: "course-embedded", meet: "https://meet.google.com/mce-kjtq-cep", hasRec: true },
-      "Tuesday_1130": { name: "Embedded Computer 1 (Tutorial)", prof: "MERABTI", type: "TD", css: "course-embedded", meet: "https://meet.google.com/mce-kjtq-cep", hasRec: false, recIssue: "Professor skipped TD break; session merged." },
-      "Tuesday_1400": { name: "Control Systems 2 (Tutorial)", prof: "GHERBI", type: "TD", css: "course-control", meet: "https://meet.google.com/csb-hbbq-nok", hasRec: true },
-      "Tuesday_1530": { name: "Electrical Machines and Drives (C)", prof: "CHELLI", type: "C", css: "course-machines", meet: "https://meet.google.com/ddj-mrwm-qdk", hasRec: false, recIssue: "Audio capture glitch during late connection." },
+      "Tuesday_0800": { name: "Control Systems 2 (C)", prof: "GHERBI", type: "C", css: "course-control", meet: "https://meet.google.com/csb-hbbq-nok", hasRec: false, recIssue: "Session scheduled for next Tuesday." },
+      "Tuesday_0930": { name: "Embedded Computer 1 (C)", prof: "MERABTI", type: "C", css: "course-embedded", meet: "https://meet.google.com/odi-yqwz-irp", hasRec: true },
+      "Tuesday_1100": { name: "Embedded Computer 1 (Tutorial)", prof: "MERABTI", type: "TD", css: "course-embedded", meet: "https://meet.google.com/odi-yqwz-irp", hasRec: false, recIssue: "Professor skipped TD break; session merged." },
+      "Tuesday_1300": { name: "Control Systems 2 (Tutorial)", prof: "GHERBI", type: "TD", css: "course-control", meet: "https://meet.google.com/csb-hbbq-nok", hasRec: true },
+      "Tuesday_1430": { name: "Electrical Machines and Drives (C)", prof: "CHELLI", type: "C", css: "course-machines", meet: "https://meet.google.com/pux-yiek-dcj", hasRec: true },
 
       // Thursday
-      "Thursday_0830": { name: "Industrial Programmable Automation 1 (C)", prof: "RIGHI", type: "C", css: "course-api", meet: "https://meet.google.com/pti-nsoj-hui", hasRec: false, recIssue: "Upcoming lecture slot." },
-      "Thursday_1000": { name: "Industrial Programmable Automation 1 (Tutorial)", prof: "RIGHI", type: "TD", css: "course-api", meet: "https://meet.google.com/pti-nsoj-hui", hasRec: true }
+      "Thursday_0800": { name: "Industrial Programmable Automation 1 (C)", prof: "RIGHI", type: "C", css: "course-api", meet: "https://meet.google.com/pti-nsoj-hui", hasRec: false, recIssue: "Upcoming lecture slot." },
+      "Thursday_0930": { name: "Industrial Programmable Automation 1 (Tutorial)", prof: "RIGHI", type: "TD", css: "course-api", meet: "https://meet.google.com/pti-nsoj-hui", hasRec: true }
     };
 
     let SESSIONS = [
@@ -692,7 +1314,7 @@
       const hRow = document.createElement("tr");
       hRow.innerHTML = `<th class="th-corner">Days</th>`;
       SLOTS.slice(0, 3).forEach(s => hRow.innerHTML += `<th class="th-slot">${s.label}</th>`);
-      hRow.innerHTML += `<th class="td-break" rowspan="7">BREAK TIME 13:00–14:00</th>`;
+      hRow.innerHTML += `<th class="td-break" rowspan="7">BREAK TIME 12:30–13:00</th>`;
       SLOTS.slice(3).forEach(s => hRow.innerHTML += `<th class="th-slot">${s.label}</th>`);
       table.appendChild(hRow);
 
@@ -1004,22 +1626,46 @@
     // ═════════════════════════════════════════════════════════════════
     // MODALS: TRANSCRIPT & MASTER PROMPT ACCESS
     // ═════════════════════════════════════════════════════════════════
+    function openModal(id) {
+      const modal = document.getElementById(id);
+      if (modal) {
+        modal.classList.add("active");
+        modal.style.display = "flex";
+      }
+    }
+
+    function closeModal(id) {
+      const modal = document.getElementById(id);
+      if (modal) {
+        modal.classList.remove("active");
+        modal.style.display = "none";
+      }
+    }
+
+    // Close any modal when clicking backdrop or pressing Escape
+    window.addEventListener('click', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('modal-overlay')) {
+        closeModal(e.target.id);
+      }
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.active').forEach(m => closeModal(m.id));
+      }
+    });
+
     function openTranscriptModal() {
       if (!activeSession) return;
       document.getElementById("transModalTitle").innerText = `📜 Full Transcript: ${activeSession.course_name}`;
       document.getElementById("transModalBody").innerText = activeSession.transcript || "No raw transcript text logged for this session yet.";
-      document.getElementById("transcriptModal").style.display = "flex";
+      openModal("transcriptModal");
     }
 
     function openMasterPromptModal() {
       if (!activeSession) return;
       document.getElementById("promptModalBody").innerText = activeSession.master_prompt || "Master prompt was auto-generated. Copying to clipboard...";
-      document.getElementById("promptModal").style.display = "flex";
+      openModal("promptModal");
       navigator.clipboard.writeText(activeSession.master_prompt);
-    }
-
-    function closeModal(id) {
-      document.getElementById(id).style.display = "none";
     }
 
     function copyModalContent(id) {
@@ -1050,6 +1696,20 @@
               }
             });
           }
+          if (data.config && Array.isArray(data.config.meetings)) {
+            // Live auto-update CURRICULUM from active bot config
+            data.config.meetings.forEach(m => {
+              const day = m.day_of_week;
+              const slotTimeClean = (m.time || "").replace(":", "");
+              const key = `${day}_${slotTimeClean}`;
+              if (CURRICULUM[key]) {
+                CURRICULUM[key].name = m.name;
+                CURRICULUM[key].prof = m.professor;
+                CURRICULUM[key].meet = m.url;
+              }
+            });
+            renderTimetable();
+          }
         }
       } catch(e) {}
     }
@@ -1062,13 +1722,631 @@
       renderTimetable(); // Recalculate passed and glowing active cell every minute
     }
 
+    // ═════════════════════════════════════════════════════════════════
+    // JARVIS MISSION CONTROL & CHECKLIST ENGINE
+    // ═════════════════════════════════════════════════════════════════
+    let tasksState = { tasks: [], modules: [], projects: [] };
+    let activeTaskFilter = 'all';
+    let professorIntelList = [];
+    let audioCtx = null;
+
+    // 1. Web Audio Polyphonic Sci-Fi Synthesized Chime
+    function playJarvisChime(force = false) {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+
+        const now = audioCtx.currentTime;
+        // Frequency 1: 880 Hz (A5)
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(880, now);
+        gain1.gain.setValueAtTime(0.25, now);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.35);
+
+        // Frequency 2: 1320 Hz (E6) harmonic overtone
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(1320, now + 0.12);
+        gain2.gain.setValueAtTime(0.28, now + 0.12);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+        osc2.start(now + 0.12);
+        osc2.stop(now + 0.55);
+      } catch (e) {
+        console.warn("Audio chime context error:", e);
+      }
+    }
+
+    // 2. Tab Navigation Switcher
+    function switchMainTab(tab) {
+      const btnTime = document.getElementById("btnTabTimetable");
+      const btnJarv = document.getElementById("btnTabJarvis");
+      const viewTime = document.getElementById("viewTimetable");
+      const viewJarv = document.getElementById("viewJarvisControl");
+
+      if (tab === 'timetable') {
+        btnTime.classList.add("active");
+        btnJarv.classList.remove("active");
+        viewTime.style.display = "flex";
+        viewJarv.style.display = "none";
+      } else {
+        btnJarv.classList.add("active");
+        btnTime.classList.remove("active");
+        viewTime.style.display = "none";
+        viewJarv.style.display = "flex";
+        loadTasksData();
+        loadProfessorIntel();
+      }
+    }
+
+    // 3. Load & Save Task State
+    async function loadTasksData() {
+      try {
+        const resp = await fetch("http://localhost:5050/api/tasks");
+        if (resp.ok) {
+          tasksState = await resp.json();
+          renderModules();
+          renderProjects();
+          renderTasks();
+          updateHeaderTaskBadge();
+        }
+      } catch (e) {
+        console.error("Failed to load tasks data:", e);
+      }
+    }
+
+    async function saveTasksData() {
+      try {
+        await fetch("http://localhost:5050/api/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(tasksState)
+        });
+        updateHeaderTaskBadge();
+      } catch (e) {
+        console.error("Failed to save tasks:", e);
+      }
+    }
+
+    function updateHeaderTaskBadge() {
+      const pendingCount = (tasksState.tasks || []).filter(t => t.status !== 'completed').length;
+      const badge = document.getElementById("headerTaskBadge");
+      if (badge) {
+        badge.innerText = pendingCount;
+        badge.style.display = pendingCount > 0 ? "inline-block" : "none";
+      }
+    }
+
+    // 4. Academic Module Mastery Sliders
+    function renderModules() {
+      const container = document.getElementById("moduleSlidersContainer");
+      if (!container || !tasksState.modules) return;
+      container.innerHTML = "";
+
+      let totalPct = 0;
+      tasksState.modules.forEach(m => {
+        const pct = m.progress || 0;
+        totalPct += pct;
+
+        let tierColor = "#f43f5e";
+        let tierText = "Untouched";
+        if (pct > 0 && pct < 40) { tierColor = "#f59e0b"; tierText = "Initiated"; }
+        else if (pct >= 40 && pct < 80) { tierColor = "#38bdf8"; tierText = "Proficient"; }
+        else if (pct >= 80) { tierColor = "#10b981"; tierText = "Exam Ready"; }
+
+        const card = document.createElement("div");
+        card.className = "module-item-box";
+        card.innerHTML = `
+          <div class="mod-box-header">
+            <div>
+              <div class="mod-box-title">${m.name}</div>
+              <div class="mod-box-prof">Prof. ${m.prof || 'Faculty'}</div>
+            </div>
+            <span class="mod-tier-badge" style="background: ${tierColor}20; color: ${tierColor};">${tierText}</span>
+          </div>
+          <div class="mod-slider-row">
+            <input type="range" min="0" max="100" value="${pct}" class="mod-slider"
+              oninput="document.getElementById('lbl_mod_${m.id}').innerText = this.value + '%'"
+              onchange="updateModuleProgress('${m.id}', this.value)">
+            <span class="mod-slider-label" id="lbl_mod_${m.id}">${pct}%</span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      const avg = tasksState.modules.length > 0 ? Math.round(totalPct / tasksState.modules.length) : 0;
+      const avgBadge = document.getElementById("masteryOverallBadge");
+      if (avgBadge) avgBadge.innerText = `${avg}% Average`;
+    }
+
+    function updateModuleProgress(modId, val) {
+      const mod = (tasksState.modules || []).find(m => m.id === modId);
+      if (mod) {
+        mod.progress = parseInt(val, 10);
+        saveTasksData();
+        renderModules();
+      }
+    }
+
+    // 5. Projects & n8n Workflows Hub
+    function renderProjects() {
+      const container = document.getElementById("projectsContainer");
+      if (!container || !tasksState.projects) return;
+      container.innerHTML = "";
+
+      tasksState.projects.forEach(p => {
+        const pct = p.progress || 0;
+        const color = p.color || "#38bdf8";
+        const icon = p.icon || "⚡";
+        
+        const avatarContent = p.image 
+          ? `<img src="${p.image}" alt="${p.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span style="display:none;">${icon}</span>`
+          : `<span>${icon}</span>`;
+
+        let linksHtml = "";
+        if (p.links) {
+          if (p.links.n8n) {
+            linksHtml += `<a href="${p.links.n8n}" target="_blank" class="btn-proj-link">⚡ Open in n8n</a>`;
+          }
+          if (p.links.web) {
+            linksHtml += `<a href="${p.links.web}" target="_blank" class="btn-proj-link">🌐 Open App</a>`;
+          }
+        }
+
+        const card = document.createElement("div");
+        card.className = "project-item-box";
+        card.style.setProperty("--proj-color", color);
+        card.style.setProperty("--proj-glow", `${color}33`);
+
+        card.innerHTML = `
+          <div class="proj-head">
+            <div class="proj-identity">
+              <div class="proj-avatar-box" style="background: ${color}15; border-color: ${color}40; color: ${color};">
+                ${avatarContent}
+              </div>
+              <div class="proj-title-group">
+                <div class="proj-name">${p.name}</div>
+                <span class="proj-cat" style="background: ${color}20; color: ${color}; border: 1px solid ${color}40;">
+                  ${p.category || 'Pipeline'}
+                </span>
+              </div>
+            </div>
+            <button class="btn-proj-del" onclick="deleteProject('${p.id}')" title="Delete project">✕</button>
+          </div>
+          <div class="proj-desc">${p.description || ''}</div>
+          <div class="mod-slider-row">
+            <input type="range" min="0" max="100" value="${pct}" class="mod-slider" style="accent-color: ${color};"
+              oninput="document.getElementById('lbl_proj_${p.id}').innerText = this.value + '%'"
+              onchange="updateProjectProgress('${p.id}', this.value)">
+            <span class="mod-slider-label" id="lbl_proj_${p.id}" style="color: ${color}; font-weight: 800;">${pct}%</span>
+          </div>
+          <div class="proj-links">${linksHtml}</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function updateProjectProgress(projId, val) {
+      const p = (tasksState.projects || []).find(x => x.id === projId);
+      if (p) {
+        p.progress = parseInt(val, 10);
+        saveTasksData();
+      }
+    }
+
+    function openAddProjectPrompt() {
+      const nameInput = document.getElementById("newProjName");
+      if (nameInput) nameInput.value = "";
+      openModal('addProjectModal');
+      setTimeout(() => {
+        if (nameInput) nameInput.focus();
+      }, 50);
+    }
+
+    function submitNewProject() {
+      const name = document.getElementById("newProjName").value.trim();
+      if (!name) {
+        alert("Please enter a project name.");
+        return;
+      }
+      const category = document.getElementById("newProjCategory").value.trim() || "Custom Automation";
+      const color = document.getElementById("newProjColor").value || "#38bdf8";
+      const icon = document.getElementById("newProjIcon").value.trim() || "🚀";
+      const image = document.getElementById("newProjImage").value.trim();
+      const n8nUrl = document.getElementById("newProjN8nUrl").value.trim();
+      const webUrl = document.getElementById("newProjWebUrl").value.trim();
+      const desc = document.getElementById("newProjDesc").value.trim() || "User tracked project";
+
+      const links = {};
+      if (n8nUrl) links.n8n = n8nUrl;
+      if (webUrl) links.web = webUrl;
+
+      const newProj = {
+        id: "proj_" + Date.now(),
+        name: name,
+        category: category,
+        color: color,
+        icon: icon,
+        image: image,
+        progress: 0,
+        links: links,
+        description: desc
+      };
+
+      if (!tasksState.projects) tasksState.projects = [];
+      tasksState.projects.push(newProj);
+      saveTasksData();
+      renderProjects();
+      closeModal('addProjectModal');
+      playJarvisChime();
+
+      // Reset form
+      document.getElementById("newProjName").value = "";
+      document.getElementById("newProjCategory").value = "";
+      document.getElementById("newProjImage").value = "";
+      document.getElementById("newProjN8nUrl").value = "";
+      document.getElementById("newProjWebUrl").value = "";
+      document.getElementById("newProjDesc").value = "";
+    }
+
+    function deleteProject(projId) {
+      if (!confirm("Are you sure you want to remove this project?")) return;
+      tasksState.projects = (tasksState.projects || []).filter(p => p.id !== projId);
+      saveTasksData();
+      renderProjects();
+    }
+
+    // 6. Smart Checklist Matrix & Filter
+    function setTaskFilter(filter, el) {
+      activeTaskFilter = filter;
+      document.querySelectorAll(".task-filter-tab").forEach(b => b.classList.remove("active"));
+      if (el) el.classList.add("active");
+      renderTasks();
+    }
+
+    function renderTasks() {
+      const container = document.getElementById("taskListContainer");
+      if (!container) return;
+      container.innerHTML = "";
+
+      const todayStr = new Date().toISOString().split("T")[0];
+      let filtered = (tasksState.tasks || []).filter(t => {
+        if (activeTaskFilter === 'completed') return t.status === 'completed';
+        if (activeTaskFilter === 'rolled') return t.rolled_over && t.status !== 'completed';
+        if (activeTaskFilter === 'today') return t.due_date === todayStr && t.status !== 'completed';
+        if (activeTaskFilter === 'all') return true;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 28px; color: var(--text-muted); font-size: 0.85rem;">
+            No tasks found in this view. Use <strong>+ Add Task</strong> or ask Jarvis to assign priorities.
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach(t => {
+        const isDone = t.status === 'completed';
+        const priorityClass = t.priority === 'high' ? 'task-priority-high' : (t.priority === 'low' ? 'task-priority-low' : 'task-priority-med');
+        const rolledBadge = t.rolled_over && !isDone
+          ? `<span class="task-rolled-badge">⏩ Rolled Over from ${t.original_date || 'Yesterday'}</span>`
+          : '';
+
+        const card = document.createElement("div");
+        card.className = `task-card ${isDone ? 'completed' : ''}`;
+        card.innerHTML = `
+          <button class="task-check-btn" onclick="toggleTaskStatus('${t.id}')">✓</button>
+          <div class="task-body">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <div class="task-text-title">${t.title}</div>
+              <button class="btn-task-del" title="Delete Task" onclick="deleteTask('${t.id}')">✕</button>
+            </div>
+            ${t.description ? `<div class="task-text-desc">${t.description}</div>` : ''}
+            <div class="task-meta-row">
+              <span class="task-cat-pill">${t.category || 'General'}</span>
+              <span class="${priorityClass}">● ${t.priority ? t.priority.toUpperCase() : 'NORMAL'}</span>
+              <span class="task-date-pill">Due: ${t.due_date || 'No Date'}</span>
+              ${rolledBadge}
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function toggleTaskStatus(id) {
+      const task = (tasksState.tasks || []).find(t => t.id === id);
+      if (task) {
+        task.status = task.status === 'completed' ? 'pending' : 'completed';
+        if (task.status === 'completed') {
+          playJarvisChime();
+        }
+        saveTasksData();
+        renderTasks();
+      }
+    }
+
+    function deleteTask(id) {
+      tasksState.tasks = (tasksState.tasks || []).filter(t => t.id !== id);
+      saveTasksData();
+      renderTasks();
+    }
+
+    function openAddTaskModal() {
+      const dateInput = document.getElementById("newTaskDueDate");
+      if (dateInput) dateInput.value = new Date().toISOString().split("T")[0];
+      const titleInput = document.getElementById("newTaskTitle");
+      if (titleInput) titleInput.value = "";
+      const descInput = document.getElementById("newTaskDesc");
+      if (descInput) descInput.value = "";
+      openModal("addTaskModal");
+      setTimeout(() => {
+        if (titleInput) titleInput.focus();
+      }, 50);
+    }
+
+    function submitNewTask() {
+      const title = document.getElementById("newTaskTitle").value.trim();
+      if (!title) {
+        alert("Please provide a task title.");
+        return;
+      }
+      const desc = document.getElementById("newTaskDesc").value.trim();
+      const cat = document.getElementById("newTaskCategory").value;
+      const prio = document.getElementById("newTaskPriority").value;
+      const due = document.getElementById("newTaskDueDate").value || new Date().toISOString().split("T")[0];
+
+      const newTask = {
+        id: "task_" + Date.now(),
+        title: title,
+        description: desc,
+        category: cat,
+        type: "manual",
+        due_date: due,
+        original_date: due,
+        rolled_over: false,
+        priority: prio,
+        status: "pending",
+        source: "manual"
+      };
+
+      tasksState.tasks.unshift(newTask);
+      saveTasksData();
+      renderTasks();
+      closeModal("addTaskModal");
+      playJarvisChime();
+    }
+
+    // 7. Auto-Extracted Professor Intel Feed
+    async function loadProfessorIntel() {
+      try {
+        const resp = await fetch("http://localhost:5050/api/professor-intel");
+        if (resp.ok) {
+          const data = await resp.json();
+          professorIntelList = data.intel || [];
+          renderProfessorIntel();
+        }
+      } catch (e) {
+        console.error("Failed to load professor intel:", e);
+      }
+    }
+
+    function renderProfessorIntel() {
+      const container = document.getElementById("profIntelContainer");
+      if (!container) return;
+      container.innerHTML = "";
+
+      if (!professorIntelList || professorIntelList.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.8rem;">
+            No homework or exam alerts detected in recent session transcripts.
+          </div>
+        `;
+        return;
+      }
+
+      professorIntelList.forEach(item => {
+        let badgeClass = "intel-type-hw";
+        if (item.type === "exam") badgeClass = "intel-type-exam";
+        else if (item.type === "tp") badgeClass = "intel-type-tp";
+
+        const card = document.createElement("div");
+        card.className = "intel-feed-card";
+        card.innerHTML = `
+          <div class="intel-feed-head">
+            <span class="intel-type-badge ${badgeClass}">${item.type}</span>
+            <span style="font-size: 0.7rem; color: #64748b; font-family: 'JetBrains Mono', monospace;">${item.date || 'Recent'}</span>
+          </div>
+          <div style="font-size: 0.86rem; font-weight: 700; color: #fff;">${item.title}</div>
+          <div style="font-size: 0.78rem; color: #94a3b8; line-height: 1.4;">${item.description}</div>
+          <div style="display: flex; justify-content: flex-end; margin-top: 4px;">
+            <button class="btn-convert-intel" onclick="convertIntelToTask('${item.id}')">+ Add to Checklist</button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function convertIntelToTask(intelId) {
+      const item = professorIntelList.find(x => x.id === intelId);
+      if (!item) return;
+
+      const newTask = {
+        id: "task_intel_" + Date.now(),
+        title: item.title,
+        description: item.description,
+        category: item.category || "University Module",
+        type: "academic",
+        due_date: new Date().toISOString().split("T")[0],
+        original_date: new Date().toISOString().split("T")[0],
+        rolled_over: false,
+        priority: item.type === 'exam' ? 'high' : 'medium',
+        status: "pending",
+        source: "professor_auto"
+      };
+
+      tasksState.tasks.unshift(newTask);
+      saveTasksData();
+      renderTasks();
+      playJarvisChime();
+      alert(`✅ Imported "${item.title}" into your active Checklist!`);
+    }
+
+    // 8. Jarvis AI Chat Advisor
+    function quickJarvisPrompt(promptText) {
+      const input = document.getElementById("jarvisInputText");
+      if (input) {
+        input.value = promptText;
+        sendJarvisMessage();
+      }
+    }
+
+    async function sendJarvisMessage() {
+      const input = document.getElementById("jarvisInputText");
+      const chatLog = document.getElementById("jarvisChatLog");
+      if (!input || !chatLog) return;
+      const text = input.value.trim();
+      if (!text) return;
+
+      // User Message Bubble
+      const userBubble = document.createElement("div");
+      userBubble.className = "jarvis-msg user";
+      userBubble.innerText = text;
+      chatLog.appendChild(userBubble);
+      input.value = "";
+      chatLog.scrollTop = chatLog.scrollHeight;
+
+      // Thinking Indicator
+      const thinkingBubble = document.createElement("div");
+      thinkingBubble.className = "jarvis-msg ai";
+      thinkingBubble.innerHTML = "<em>Analyzing academic curriculum & priorities...</em>";
+      chatLog.appendChild(thinkingBubble);
+      chatLog.scrollTop = chatLog.scrollHeight;
+
+      try {
+        const resp = await fetch("http://localhost:5050/api/jarvis/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text })
+        });
+
+        if (resp.ok) {
+          const resData = await resp.json();
+          thinkingBubble.innerHTML = `<strong>JARVIS:</strong> ${resData.reply.replace(/\n/g, '<br>')}`;
+          playJarvisChime();
+
+          // Execute action command if returned by Jarvis
+          if (resData.action && resData.action.action === "create_task") {
+            const t = resData.action;
+            const newTask = {
+              id: "task_jarvis_" + Date.now(),
+              title: t.title || "Task from Jarvis",
+              description: t.description || "",
+              category: t.category || "General",
+              priority: t.priority || "high",
+              due_date: t.due_date || new Date().toISOString().split("T")[0],
+              original_date: t.due_date || new Date().toISOString().split("T")[0],
+              rolled_over: false,
+              status: "pending",
+              source: "jarvis"
+            };
+            tasksState.tasks.unshift(newTask);
+            saveTasksData();
+            renderTasks();
+          }
+        } else {
+          thinkingBubble.innerHTML = "<strong>JARVIS:</strong> Connection error contacting core reasoning engine.";
+        }
+      } catch (e) {
+        thinkingBubble.innerHTML = `<strong>JARVIS:</strong> Offline tactical fallback engaged. Focus on overdue tasks first.`;
+      }
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    // 9. Live Meeting Interactive Management
+    let currentLiveMeeting = null;
+
+    async function checkLiveMeetingStatus() {
+      try {
+        const resp = await fetch("http://localhost:5050/api/status");
+        if (resp.ok) {
+          const data = await resp.json();
+          currentLiveMeeting = data.active_meeting;
+          const bar = document.getElementById("liveMeetingBar");
+          if (bar) {
+            if (currentLiveMeeting) {
+              bar.style.display = "flex";
+              document.getElementById("liveMeetingName").innerText = currentLiveMeeting.name;
+              document.getElementById("liveMeetingProf").innerText = currentLiveMeeting.professor || "Faculty";
+              document.getElementById("liveMeetingTime").innerText = currentLiveMeeting.time;
+            } else {
+              bar.style.display = "none";
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    function attendLiveMeeting() {
+      if (currentLiveMeeting && currentLiveMeeting.url) {
+        window.open(currentLiveMeeting.url, "_blank");
+      } else {
+        alert("No active Google Meet URL detected.");
+      }
+    }
+
+    async function focusBotChromeWindow() {
+      try {
+        const resp = await fetch("http://localhost:5050/api/meeting/focus", { method: "POST" });
+        if (resp.ok) {
+          playJarvisChime();
+        }
+      } catch (e) {
+        alert("Could not bring Chrome to front: " + e);
+      }
+    }
+
+    async function exitLiveMeeting() {
+      if (!confirm("Are you sure you want the bot to leave the Google Meet call right now?")) {
+        return;
+      }
+      try {
+        const resp = await fetch("http://localhost:5050/api/meeting/exit", { method: "POST" });
+        if (resp.ok) {
+          playJarvisChime();
+          alert("🛑 Exit signal sent! The bot is leaving the meeting and saving files.");
+          setTimeout(checkLiveMeetingStatus, 2000);
+        }
+      } catch (e) {
+        alert("Error sending exit signal: " + e);
+      }
+    }
+
     // Initial setup
     setInterval(updateClock, 10000); // 10s clock & timeline check
+    setInterval(checkLiveMeetingStatus, 4000); // 4s active meeting check
     updateClock();
     renderTimetable();
     renderArchiveList();
     selectSession(activeSession);
     loadLiveData();
+    loadTasksData();
+    loadProfessorIntel();
+    checkLiveMeetingStatus();
   </script>
 </body>
 </html>

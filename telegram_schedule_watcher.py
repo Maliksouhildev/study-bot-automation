@@ -3,7 +3,9 @@ import sys
 import json
 import os
 import re
+import base64
 import requests
+import subprocess
 from datetime import datetime, timezone, timedelta
 from telethon import TelegramClient, events
 
@@ -38,10 +40,10 @@ TOPIC_IMPORTANT = 989
 TOPIC_MEET = 993
 TOPIC_DISCUSSION = 987
 
-# New official timetable was issued Oct 1 2026.
+# New official timetable was issued Oct 12 2026.
 # Schedule time/day changes from messages BEFORE this date are ignored
 # (only URL updates from older messages are still applied).
-TIMETABLE_EPOCH = datetime(2026, 10, 1, 0, 0, 0, tzinfo=timezone.utc)
+TIMETABLE_EPOCH = datetime(2026, 10, 12, 0, 0, 0, tzinfo=timezone.utc)
 
 
 # Day name maps (French + Arabic Darija -> weekday number, 0=Monday)
@@ -214,8 +216,18 @@ def date_to_weekday_name(resolved_date):
 # ── Config helpers ──────────────────────────────────────────────────────────────
 
 def load_config():
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, "r", encoding="utf-8-sig") as f:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    cfg_path = os.path.join(base_dir, CONFIG_FILE)
+    if not os.path.exists(cfg_path):
+        ex_path = os.path.join(base_dir, "config.example.json")
+        if os.path.exists(ex_path):
+            try:
+                import shutil
+                shutil.copy(ex_path, cfg_path)
+            except Exception:
+                pass
+    if os.path.exists(cfg_path):
+        with open(cfg_path, "r", encoding="utf-8-sig") as f:
             raw = f.read().strip()
         if not raw:
             return {"meetings": [], "settings": {}}
@@ -249,8 +261,14 @@ def check_time_conflict(meetings, day, time, exclude_name=None):
     return conflicts
 
 
-def update_meeting_url(subject, meet_url):
-    """Update only the Google Meet URL for all matched meetings. No date changes."""
+def update_meeting_url(subject, meet_url, raw_text=""):
+    """Update Google Meet URL with specific (C) vs (TD) discrimination and live config sync."""
+    # Guard against obsolete/dead link recycled from previous weeks
+    OBSOLETE_URLS = ["https://meet.google.com/mce-kjtq-cep"]
+    if meet_url in OBSOLETE_URLS:
+        print(f" [REJECT OBSOLETE LINK] Ignoring dead/recycled meet link: {meet_url}")
+        return False
+
     config = load_config()
     meetings = config.get("meetings", [])
 
@@ -259,8 +277,21 @@ def update_meeting_url(subject, meet_url):
         print(f" [SKIP] No existing meeting matched '{subject}' for URL update")
         return False
 
+    combined_text = f"{subject} {raw_text}".lower()
+    targets = matched_list
+
+    # Specifically discriminate TD vs Cours
+    if "(td)" in combined_text or " td" in combined_text or "td " in combined_text:
+        td_only = [m for m in matched_list if "(td" in m.get("name", "").lower()]
+        if td_only:
+            targets = td_only
+    elif "(c)" in combined_text or " cours" in combined_text or "cour " in combined_text:
+        c_only = [m for m in matched_list if "(c)" in m.get("name", "").lower()]
+        if c_only:
+            targets = c_only
+
     updated = False
-    for m in matched_list:
+    for m in targets:
         if meet_url and meet_url != m.get("url"):
             print(f" [URL UPDATED] {m['name']}: {m['url']} -> {meet_url}")
             m["url"] = meet_url
@@ -270,10 +301,17 @@ def update_meeting_url(subject, meet_url):
 
     if updated:
         save_config(config)
+        sync_task_to_dashboard(
+            f"New Meet Link: {targets[0]['name']}",
+            f"Updated Google Meet URL to {meet_url}",
+            targets[0]['name'],
+            datetime.now().strftime("%Y-%m-%d"),
+            "high"
+        )
     return updated
 
 
-def apply_schedule_change(subject, day_str, time_str, meet_url, msg_date):
+def apply_schedule_change(subject, day_str, time_str, meet_url, msg_date, notes=""):
     """
     Apply a schedule change with strict date validation anchored to msg_date.
     Never creates same-time conflicts. Never applies past-date changes.
@@ -281,6 +319,10 @@ def apply_schedule_change(subject, day_str, time_str, meet_url, msg_date):
     """
     config = load_config()
     meetings = config.get("meetings", [])
+
+    combined_hint = f"{subject} {notes}".lower()
+    if not day_str and ("demain" in combined_hint or "ghodwa" in combined_hint):
+        day_str = "demain"
 
     # Block day/time changes from messages predating the new official timetable (Oct 1 2026).
     # URL updates from old messages are still fine.
@@ -314,12 +356,11 @@ def apply_schedule_change(subject, day_str, time_str, meet_url, msg_date):
 
     # Prefer TD or C specifically if indicated in text or subject
     matched = matched_list[0]
-    subject_lower = subject.lower()
-    if "(td)" in subject_lower or " td" in subject_lower:
+    if "(td)" in combined_hint or " td" in combined_hint or "td " in combined_hint:
         td_matches = [m for m in matched_list if "(td" in m.get("name", "").lower()]
         if td_matches:
             matched = td_matches[0]
-    elif "(c)" in subject_lower or " cours" in subject_lower:
+    elif "(c)" in combined_hint or " cours" in combined_hint:
         c_matches = [m for m in matched_list if "(c)" in m.get("name", "").lower()]
         if c_matches:
             matched = c_matches[0]
@@ -355,21 +396,236 @@ def apply_schedule_change(subject, day_str, time_str, meet_url, msg_date):
         return False
 
 
+def apply_schedule_cancellation(subject, day_str, msg_date, notes=""):
+    """
+    Mark a session cancelled for a specific date (add to cancelled_dates in config.json).
+    """
+    config = load_config()
+    meetings = config.get("meetings", [])
+
+    resolved_date = resolve_day_from_message(day_str, msg_date) if day_str else None
+    if not resolved_date:
+        msg_local = msg_date.astimezone(timezone(timedelta(hours=1)))
+        resolved_date = msg_local.date()
+
+    date_str = resolved_date.strftime("%Y-%m-%d")
+    matched_list = find_meeting(meetings, subject)
+    if not matched_list:
+        print(f" [SKIP CANCEL] No meeting matched '{subject}'")
+        return False
+
+    combined_hint = f"{subject} {notes}".lower()
+    both = ("cours et td" in combined_hint or "cours w td" in combined_hint or
+            ("cours" in combined_hint and "td" in combined_hint) or
+            "m3ndhach cnx" in combined_hint or "mat9rawch" in combined_hint)
+
+    targets = []
+    if both:
+        targets = matched_list
+    elif "(td)" in combined_hint or " td" in combined_hint:
+        targets = [m for m in matched_list if "(td" in m.get("name", "").lower()] or matched_list[:1]
+    elif "(c)" in combined_hint or " cours" in combined_hint:
+        targets = [m for m in matched_list if "(c)" in m.get("name", "").lower()] or matched_list[:1]
+    else:
+        targets = matched_list[:1]
+
+    updated = False
+    for matched in targets:
+        cancelled_dates = matched.setdefault("cancelled_dates", [])
+        if date_str not in cancelled_dates:
+            cancelled_dates.append(date_str)
+            updated = True
+            print(f" [CANCEL APPLIED] 🚫 {matched['name']} cancelled for {date_str} (Notes: {notes})")
+        else:
+            print(f" [CANCEL UNCHANGED] {matched['name']} already marked cancelled for {date_str}")
+
+    if updated:
+        save_config(config)
+        return True
+    return False
+
+
+def sync_task_to_dashboard(title, description, category, due_date, priority="medium"):
+    """Auto-sync parsed announcements or tasks directly into the website dashboard's tasks_data.json."""
+    tasks_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard", "tasks_data.json")
+    if os.path.exists(tasks_path):
+        try:
+            with open(tasks_path, "r", encoding="utf-8-sig") as f:
+                data = json.load(f)
+            tasks = data.setdefault("tasks", [])
+            for t in tasks:
+                if t.get("title", "").strip().lower() == title.strip().lower():
+                    return
+            task_id = f"task_auto_{int(datetime.now().timestamp())}"
+            tasks.append({
+                "id": task_id,
+                "title": title,
+                "description": description,
+                "category": category,
+                "type": "academic",
+                "due_date": due_date,
+                "original_date": due_date,
+                "rolled_over": False,
+                "priority": priority,
+                "status": "pending",
+                "source": "telegram_auto_watcher"
+            })
+            with open(tasks_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            print(f" [DASHBOARD SYNC] Added task '{title}' to website tasks_data.json")
+        except Exception as e:
+            print(f" [DASHBOARD SYNC ERROR] {e}")
+
+
+def process_parsed_announcement(parsed, raw_text, msg_date):
+    """Unified handler for parsed schedule updates (reschedule vs cancellation)."""
+    subj = parsed.get("subject")
+    if not subj or subj == "unknown":
+        return False
+
+    notes = parsed.get("notes", "")
+    day_raw = parsed.get("day_of_week")
+    time_raw = parsed.get("time")
+    url_raw = parsed.get("meet_url")
+
+    check_str = f"{raw_text} {notes}".lower()
+    cancel_keywords = [
+        "annulation", "annulé", "annule", "pas de", "makanesh",
+        "annulee", "annulée", "will not take place", "cancelled",
+        "canceled", "supprimé", "supprime"
+    ]
+    is_cancelled = any(kw in check_str for kw in cancel_keywords)
+
+    due_d = msg_date.strftime("%Y-%m-%d")
+    if is_cancelled:
+        res = apply_schedule_cancellation(subject=subj, day_str=day_raw, msg_date=msg_date, notes=notes or raw_text[:80])
+        if res:
+            sync_task_to_dashboard(f"Cancelled Session: {subj}", f"Class cancelled: {notes or raw_text[:100]}", subj, due_d, "low")
+        return res
+    else:
+        res = apply_schedule_change(subject=subj, day_str=day_raw, time_str=time_raw, meet_url=url_raw, msg_date=msg_date, notes=notes or raw_text[:80])
+        if res:
+            sync_task_to_dashboard(f"Schedule Changed: {subj}", f"Rescheduled to {day_raw or 'updated slot'} at {time_raw or 'updated time'}. Notes: {notes or raw_text[:100]}", subj, due_d, "medium")
+        return res
+
+
+def extract_text_from_image_gemini(image_bytes, caption=""):
+    """Use Gemini Flash Vision to read screenshots / photos sent on Telegram."""
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        print(" [VISION] GEMINI_API_KEY not found in environment, skipping OCR.")
+        return ""
+
+    try:
+        b64 = base64.b64encode(image_bytes).decode("utf-8")
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key={api_key}"
+        prompt = (
+            "You are an assistant analyzing a university schedule announcement, email screenshot, or chat screenshot for Algerian L3 Automatique students. "
+            "Transcribe and extract all relevant schedule details: course name, date, time, whether any class/TD/TP is cancelled, rescheduled, or moved. "
+            f"Optional caption: {caption}"
+        )
+        payload = {
+            "contents": [{
+                "parts": [
+                    {"inline_data": {"mime_type": "image/jpeg", "data": b64}},
+                    {"text": prompt}
+                ]
+            }]
+        }
+        resp = requests.post(url, json=payload, timeout=25)
+        if resp.status_code == 200:
+            data = resp.json()
+            return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        else:
+            print(f" [VISION ERROR] Gemini returned status {resp.status_code}: {resp.text[:100]}")
+    except Exception as e:
+        print(f" [VISION EXCEPTION] Failed to run vision OCR: {e}")
+    return ""
+
+
 
 # ── n8n Gemini parser ──────────────────────────────────────────────────────────
+
+def parse_locally_fallback(message_text):
+    """
+    Local NLP heuristic for Algerian university announcements (French + Darija).
+    Activates when n8n parser times out or is unreachable.
+    """
+    lower = message_text.lower()
+    cancel_keywords = [
+        "mat9rawch", "matqrawch", "makanesh", "makach", "makanx",
+        "annulé", "annule", "annulee", "annulée", "annulation",
+        "reporté", "reporte", "reportee", "reportée", "report",
+        "pas de td", "pas de cours", "pas de seance", "pas de séance",
+        "y3awdhalna", "n3awdoha", "déplacement", "deplacement"
+    ]
+    is_cancel = any(kw in lower for kw in cancel_keywords)
+    reschedule_keywords = ["bedlo", "badlo", "changement", "décalé", "decale", "tbadal", "tbadel"]
+    is_reschedule = any(kw in lower for kw in reschedule_keywords)
+
+    if not (is_cancel or is_reschedule):
+        return {"is_schedule_update": False}
+
+    cfg = load_config()
+    now_dt = datetime.now()
+    today_name = DAYS[now_dt.weekday()]
+    found_subject = None
+
+    for alias, canon in SUBJECT_ALIASES.items():
+        if alias in lower:
+            found_subject = canon
+            break
+
+    if not found_subject:
+        is_td_msg = "td" in lower
+        is_cours_msg = any(w in lower for w in ["cours", "cour", "cours magistral"])
+        for m in cfg.get("meetings", []):
+            if m.get("day_of_week", "").lower() == today_name:
+                s_dt, e_dt = _class_window(m, now_dt)
+                if s_dt - timedelta(minutes=60) <= now_dt <= e_dt + timedelta(minutes=30):
+                    base_name = re.sub(r'\s*\((?:c|td|tp|td/tp)\)', '', m.get("name", ""), flags=re.I).strip()
+                    if is_td_msg and is_cours_msg:
+                        found_subject = base_name
+                        break
+                    elif is_td_msg and "(td" in m.get("name", "").lower():
+                        found_subject = m["name"]
+                        break
+                    elif is_cours_msg and "(c)" in m.get("name", "").lower():
+                        found_subject = m["name"]
+                        break
+                    elif not found_subject:
+                        found_subject = base_name
+
+    if not found_subject:
+        return {"is_schedule_update": False}
+
+    print(f" [LOCAL PARSER] Inferred active subject: '{found_subject}', cancelled={is_cancel}")
+    return {
+        "is_schedule_update": True,
+        "subject": found_subject,
+        "day_of_week": today_name.capitalize(),
+        "time": None,
+        "meet_url": None,
+        "notes": message_text[:120]
+    }
+
 
 def parse_with_n8n(message_text, retries=2):
     for attempt in range(retries):
         try:
-            resp = requests.post(N8N_PARSER_URL, json={"message_text": message_text}, timeout=20)
+            resp = requests.post(N8N_PARSER_URL, json={"message_text": message_text}, timeout=10)
             if resp.status_code == 200:
-                return resp.json()
+                data = resp.json()
+                if data.get("is_schedule_update"):
+                    return data
         except Exception as e:
             if attempt == retries - 1:
-                print(f" [!] Error calling n8n parser: {e}")
+                print(f" [!] n8n parser unavailable ({e}), engaging local heuristic parser...")
             import time
-            time.sleep(1)
-    return {"is_schedule_update": False}
+            time.sleep(0.5)
+
+    # Seamless fallback to local Darija/French NLP heuristic
+    return parse_locally_fallback(message_text)
 
 
 # ── Initial scan ───────────────────────────────────────────────────────────────
@@ -397,7 +653,7 @@ async def initial_scan(client, entity):
                 if len(sub) < 3:
                     sub = lines[1] if len(lines) > 1 else "Cours"
                 print(f" -> [{m.date.date()}] Meet link for '{sub}': {url}")
-                update_meeting_url(sub, url)
+                update_meeting_url(sub, url, raw_text=lines[0] if lines else "")
 
     # 2. Important topic — schedule announcements, date-anchored
     print("\n[2/3] Scanning Important topic for schedule changes...")
@@ -411,11 +667,9 @@ async def initial_scan(client, entity):
                 url_raw = parsed.get("meet_url")
                 notes = parsed.get("notes", m.text[:80])
                 print(f" -> [{m.date.date()}] '{notes}' | subject={parsed['subject']} day={day_raw} time={time_raw}")
-                apply_schedule_change(
-                    subject=parsed["subject"],
-                    day_str=day_raw,
-                    time_str=time_raw,
-                    meet_url=url_raw,
+                process_parsed_announcement(
+                    parsed=parsed,
+                    raw_text=m.text,
                     msg_date=m.date
                 )
 
@@ -426,102 +680,192 @@ async def initial_scan(client, entity):
         if m.date >= start_date and m.text:
             has_meet = "meet.google.com" in m.text
             has_reschedule = any(kw in m.text.lower() for kw in [
-                "reporté", "reporte", "annulé", "annule", "bedlo", "changement", "décalé"
+                "reporté", "reporte", "annulé", "annule", "bedlo", "changement", "décalé", "pas de"
             ])
             if has_meet or has_reschedule:
                 parsed = parse_with_n8n(m.text)
                 if parsed.get("is_schedule_update") and parsed.get("subject") and parsed.get("subject") != "unknown":
                     notes = parsed.get("notes", m.text[:80])
                     print(f" -> [{m.date.date()}] Discussion: '{notes}'")
-                    apply_schedule_change(
-                        subject=parsed["subject"],
-                        day_str=parsed.get("day_of_week"),
-                        time_str=parsed.get("time"),
-                        meet_url=parsed.get("meet_url"),
+                    process_parsed_announcement(
+                        parsed=parsed,
+                        raw_text=m.text,
                         msg_date=m.date
                     )
 
     print("\nInitial scan complete!\n")
 
 
-# ── Live watcher ───────────────────────────────────────────────────────────────
+# ── Live watcher & RAM-Optimized Session Supervisor ───────────────────────────
+
+_bot_subprocess = None
+
+def is_bot_running():
+    global _bot_subprocess
+    if _bot_subprocess is not None and _bot_subprocess.poll() is None:
+        return True
+    try:
+        import psutil
+        for p in psutil.process_iter(['name', 'cmdline']):
+            if 'python' in (p.info.get('name') or '').lower():
+                cmd = ' '.join(p.info.get('cmdline') or [])
+                if 'bot.py' in cmd:
+                    return True
+    except Exception:
+        pass
+    return False
+
+
+async def session_supervisor():
+    """
+    On-Demand RAM Optimizer:
+    Monitors today's schedule from config.json.
+    Only spawns bot.py when a class is due (or active).
+    When no classes are active, bot.py exits, keeping RAM free.
+    """
+    global _bot_subprocess
+    print("[SUPERVISOR] 🧠 On-Demand Session Supervisor started. Monitoring for upcoming classes...")
+    while True:
+        try:
+            cfg = load_config()
+            if cfg.get("enabled", True) is not False:
+                now_alg = datetime.now(timezone(timedelta(hours=1)))
+                today_name = DAYS[now_alg.weekday()]
+                today_str = now_alg.strftime("%Y-%m-%d")
+
+                should_run = False
+                active_session_name = None
+
+                for m in cfg.get("meetings", []):
+                    if today_str in m.get("cancelled_dates", []):
+                        continue
+                    if m.get("day_of_week", "").lower() != today_name:
+                        continue
+
+                    time_str = m.get("time")
+                    if not time_str:
+                        continue
+
+                    sh, sm = map(int, time_str.split(":"))
+                    class_start = now_alg.replace(hour=sh, minute=sm, second=0, microsecond=0)
+                    class_end = class_start + timedelta(minutes=m.get("duration_minutes", 90))
+
+                    # If within 5 minutes before class up to class end:
+                    if (class_start - timedelta(minutes=5)) <= now_alg < class_end:
+                        should_run = True
+                        active_session_name = m["name"]
+                        break
+
+                if should_run:
+                    if not is_bot_running():
+                        print(f"[{now_alg.strftime('%H:%M:%S')}] [SUPERVISOR] 🚀 Class due/active: '{active_session_name}'. Spawning bot.py...")
+                        _bot_subprocess = subprocess.Popen([sys.executable, "bot.py"], cwd=os.path.dirname(os.path.abspath(__file__)))
+        except Exception as e:
+            print(f"[SUPERVISOR ERROR] {e}")
+        await asyncio.sleep(20)
+
 
 async def main():
     print("=" * 60)
     print("TELEGRAM SCHEDULE & MEET LINK LIVE WATCHER")
-    print(f"Now (Algeria time): {NOW_ALG.strftime('%Y-%m-%d %H:%M')}")
+    now_str = (datetime.now(timezone.utc) + timedelta(hours=1)).strftime('%Y-%m-%d %H:%M')
+    print(f"Now (Algeria time): {now_str}")
     print("=" * 60)
 
-    client = TelegramClient(SESSION_NAME, API_ID, API_HASH)
-    await client.connect()
+    # Start the on-demand RAM optimizer supervisor
+    asyncio.create_task(session_supervisor())
 
-    entity = await client.get_entity(GROUP_ID)
-    print(f"Connected to: {entity.title}")
+    while True:
+        client = TelegramClient(SESSION_NAME, API_ID, API_HASH)
+        try:
+            await client.connect()
+            entity = await client.get_entity(GROUP_ID)
+            print(f"Connected to: {entity.title}")
 
-    await initial_scan(client, entity)
+            await initial_scan(client, entity)
 
-    @client.on(events.NewMessage(chats=entity))
-    async def handler(event):
-        m = event.message
-        if not m.text:
-            return
+            @client.on(events.NewMessage(chats=entity))
+            async def handler(event):
+                m = event.message
+                text = m.text or ""
 
-        topic_id = getattr(m.reply_to, 'reply_to_top_id', None) or getattr(m.reply_to, 'reply_to_msg_id', None)
-        text = m.text
+                # Check for photo or image media
+                is_photo = bool(m.photo or (m.file and getattr(m.file, 'mime_type', '').startswith('image/')))
+                if is_photo:
+                    print(f"\n[LIVE PHOTO] Received image attachment in Telegram. Downloading for Gemini Vision OCR...")
+                    try:
+                        img_bytes = await client.download_media(m.media, bytes)
+                        if img_bytes:
+                            extracted_text = extract_text_from_image_gemini(img_bytes, caption=text)
+                            if extracted_text:
+                                print(f" -> Vision extracted: {extracted_text[:120]}...")
+                                text = f"{text}\n\n[Screenshot OCR Text]:\n{extracted_text}".strip()
+                    except Exception as e:
+                        print(f" -> Vision OCR error: {e}")
 
-        has_meet = "meet.google.com" in text.lower()
-        has_keywords = any(kw in text.lower() for kw in [
-            "cours", "séance", "seance", "td", "tp", "ghodwa", "demain", "dimanche", "lundi",
-            "mardi", "mercredi", "jeudi", "reporté", "reporte", "annulé", "annule", "heure", "bedlo",
-            "changement", "décalé"
-        ])
+                if not text:
+                    return
 
-        if topic_id in [TOPIC_MEET, TOPIC_IMPORTANT] or (topic_id == TOPIC_DISCUSSION and (has_meet or has_keywords)):
-            print(f"\n[LIVE] [{m.date.date()}] (Topic {topic_id}): {text[:100]}")
+                topic_id = getattr(m.reply_to, 'reply_to_top_id', None) or getattr(m.reply_to, 'reply_to_msg_id', None)
 
-            if topic_id == TOPIC_MEET and has_meet:
-                # URL-only update from meet channel
-                url_match = re.search(r'https?://meet\.google\.com/[a-z0-9\-]+', text)
-                if url_match:
-                    lines = [l.strip() for l in text.split("\n") if l.strip()]
-                    sub = lines[0].replace("Lien", "").strip(" :")
-                    update_meeting_url(sub, url_match.group(0))
-            else:
-                parsed = parse_with_n8n(text)
-                if parsed.get("is_schedule_update"):
-                    subj = parsed.get("subject")
-                    # If subject is omitted/unknown (e.g. "Mazal mabdatch td mazelna m3a l cours"),
-                    # infer the active session happening right now
-                    if not subj or subj == "unknown":
-                        cfg = load_config()
-                        now_dt = datetime.now()
-                        today_name = DAYS[now_dt.weekday()]
-                        is_td_msg = "td" in text.lower()
-                        is_cours_msg = any(w in text.lower() for w in ["cours", "cours magistral", "cour"])
-                        for m in cfg.get("meetings", []):
-                            if m.get("day_of_week", "").lower() == today_name:
-                                s_dt, e_dt = _class_window(m, now_dt)
-                                if s_dt - timedelta(minutes=45) <= now_dt <= e_dt:
-                                    if is_td_msg and "(td" in m.get("name", "").lower():
-                                        subj = m["name"]
-                                        break
-                                    elif is_cours_msg and "(c)" in m.get("name", "").lower():
-                                        subj = m["name"]
-                                        break
-                                    elif not subj:
-                                        subj = m["name"]
-                    if subj and subj != "unknown":
-                        print(f" -> AI: {parsed.get('notes', '')} (Target: {subj})")
-                        apply_schedule_change(
-                            subject=subj,
-                            day_str=parsed.get("day_of_week"),
-                            time_str=parsed.get("time"),
-                            meet_url=parsed.get("meet_url"),
-                            msg_date=m.date
-                        )
+                has_meet = "meet.google.com" in text.lower()
+                has_keywords = is_photo or any(kw in text.lower() for kw in [
+                    "cours", "séance", "seance", "td", "tp", "ghodwa", "demain", "dimanche", "lundi",
+                    "mardi", "mercredi", "jeudi", "reporté", "reporte", "annulé", "annule", "heure", "bedlo",
+                    "changement", "décalé", "pas de", "makanesh"
+                ])
 
-    print("Live watcher is RUNNING. Monitoring Automatique L3...\n")
-    await client.run_until_disconnected()
+                if topic_id in [TOPIC_MEET, TOPIC_IMPORTANT] or (topic_id == TOPIC_DISCUSSION and (has_meet or has_keywords)) or is_photo:
+                    print(f"\n[LIVE] [{m.date.date()}] (Topic {topic_id}): {text[:100]}")
+
+                    if topic_id == TOPIC_MEET and has_meet:
+                        # URL-only update from meet channel
+                        url_match = re.search(r'https?://meet\.google\.com/[a-z0-9\-]+', text)
+                        if url_match:
+                            lines = [l.strip() for l in text.split("\n") if l.strip()]
+                            sub = lines[0].replace("Lien", "").strip(" :")
+                            update_meeting_url(sub, url_match.group(0), raw_text=text)
+                    else:
+                        parsed = parse_with_n8n(text)
+                        if parsed.get("is_schedule_update"):
+                            subj = parsed.get("subject")
+                            if not subj or subj == "unknown":
+                                cfg = load_config()
+                                now_dt = datetime.now()
+                                today_name = DAYS[now_dt.weekday()]
+                                is_td_msg = "td" in text.lower()
+                                is_cours_msg = any(w in text.lower() for w in ["cours", "cours magistral", "cour"])
+                                for m in cfg.get("meetings", []):
+                                    if m.get("day_of_week", "").lower() == today_name:
+                                        s_dt, e_dt = _class_window(m, now_dt)
+                                        if s_dt - timedelta(minutes=45) <= now_dt <= e_dt:
+                                            if is_td_msg and "(td" in m.get("name", "").lower():
+                                                subj = m["name"]
+                                                break
+                                            elif is_cours_msg and "(c)" in m.get("name", "").lower():
+                                                subj = m["name"]
+                                                break
+                                            elif not subj:
+                                                subj = m["name"]
+                            if subj and subj != "unknown":
+                                print(f" -> AI: {parsed.get('notes', '')} (Target: {subj})")
+                                process_parsed_announcement(
+                                    parsed=parsed,
+                                    raw_text=text,
+                                    msg_date=m.date
+                                )
+
+            print("Live watcher is RUNNING. Monitoring Automatique L3...\n")
+            await client.run_until_disconnected()
+        except Exception as e:
+            print(f"\n[WATCHER RECOVERY] Disconnected or error: {e}. Reconnecting in 15 seconds...")
+            await asyncio.sleep(15)
+        finally:
+            try:
+                if client.is_connected():
+                    await client.disconnect()
+            except Exception:
+                pass
 
 
 if __name__ == "__main__":

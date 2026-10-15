@@ -79,8 +79,8 @@
 ### Step 1: Clone the Repo
 
 ```bash
-git clone https://github.com/Maliksouhildev/study-bot.git
-cd study-bot
+git clone https://github.com/Maliksouhildev/study-bot-automation.git
+cd study-bot-automation
 ```
 
 ### Step 2: Install Python Dependencies

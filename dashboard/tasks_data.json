@@ -1,0 +1,377 @@
+{
+  "tasks": [
+    {
+      "id": "task_1",
+      "title": "Complete Control Systems 2 TD Sheet 1",
+      "description": "Calculate discrete sampling period (Te) bounds between tau/10 and tau/4 for DC motor loops and check Bode asymptotic stability.",
+      "category": "Control Systems 2 (Systèmes Asservis 2)",
+      "type": "academic",
+      "due_date": "2026-10-13",
+      "original_date": "2026-10-06",
+      "rolled_over": true,
+      "priority": "high",
+      "status": "pending",
+      "source": "professor_auto"
+    },
+    {
+      "id": "task_2",
+      "title": "Practice 2^A x D Memory Addressing (Embedded Computer 1)",
+      "description": "Review Intel 8085 memory addressing schemes and prepare for ARM/STM32 lab sessions as announced by Prof. Merabti.",
+      "category": "Embedded Computer 1 (Calculateur Embarqué)",
+      "type": "academic",
+      "due_date": "2026-10-13",
+      "original_date": "2026-10-11",
+      "rolled_over": true,
+      "priority": "medium",
+      "status": "pending",
+      "source": "professor_auto"
+    },
+    {
+      "id": "task_3",
+      "title": "Recover E-Learning Account Credentials at Department",
+      "description": "Go to the electronics/automatique department on Thursday starting from 10:00 to collect official university e-learning username and password.",
+      "category": "University Administration & E-Learning",
+      "type": "administrative",
+      "due_date": "2026-10-15",
+      "original_date": "2026-10-15",
+      "rolled_over": false,
+      "priority": "high",
+      "status": "pending",
+      "source": "telegram_forum_announcement"
+    },
+    {
+      "id": "task_auto_1791838120",
+      "title": "Cancelled Session: Capteurs et Instrumentation Industriels",
+      "description": "Class cancelled: Annulation du TD de Capteurs et Instrumentation Industrielle pour demain.",
+      "category": "Capteurs et Instrumentation Industriels",
+      "type": "academic",
+      "due_date": "2026-10-13",
+      "original_date": "2026-10-10",
+      "rolled_over": true,
+      "priority": "low",
+      "status": "pending",
+      "source": "telegram_auto_watcher"
+    },
+    {
+      "id": "task_auto_1791838123",
+      "title": "Schedule Changed: Embedded Computer 1 (Calculateur Embarqué 1)",
+      "description": "Rescheduled to updated slot at updated time. Notes: Partage du lien Google Meet pour le cours de Embedded Computer 1.",
+      "category": "Embedded Computer 1 (Calculateur Embarqué 1)",
+      "type": "academic",
+      "due_date": "2026-10-13",
+      "original_date": "2026-10-06",
+      "rolled_over": true,
+      "priority": "medium",
+      "status": "pending",
+      "source": "telegram_auto_watcher"
+    },
+    {
+      "id": "task_auto_1791886446",
+      "title": "New Meet Link: Embedded Computer 1 (TD)",
+      "description": "Updated Google Meet URL to https://meet.google.com/odi-yqwz-irp",
+      "category": "Embedded Computer 1 (TD)",
+      "type": "academic",
+      "due_date": "2026-10-13",
+      "original_date": "2026-10-13",
+      "rolled_over": false,
+      "priority": "high",
+      "status": "pending",
+      "source": "telegram_auto_watcher"
+    },
+    {
+      "id": "task_auto_1791886516",
+      "title": "Schedule Changed: Embedded Computer 1 ( Calculateur Embarqué 1)",
+      "description": "Rescheduled to updated slot at updated time. Notes: Partage du lien Google Meet pour le cours de Embedded Computer 1 (Calculateur Embarqué 1).",
+      "category": "Embedded Computer 1 ( Calculateur Embarqué 1)",
+      "type": "academic",
+      "due_date": "2026-10-13",
+      "original_date": "2026-10-06",
+      "rolled_over": true,
+      "priority": "medium",
+      "status": "pending",
+      "source": "telegram_auto_watcher"
+    },
+    {
+      "id": "task_auto_cs2_cancelled",
+      "title": "🚫 Control Systems 2 (TD) Postponed — Make-Up Session Tonight",
+      "description": "Prof. Gherbi had an urgent trip (déplacement urgent). Today's 13:00 TD session is cancelled. The professor will announce the make-up session date tonight in the Telegram group.",
+      "category": "Control Systems 2 (Systèmes Asservis 2)",
+      "type": "academic",
+      "due_date": "2026-10-13",
+      "original_date": "2026-10-13",
+      "rolled_over": false,
+      "priority": "high",
+      "status": "pending",
+      "source": "telegram_auto_watcher"
+    },
+    {
+      "id": "task_auto_1791894766",
+      "title": "New Meet Link: Embedded Computer 1 (C)",
+      "description": "Updated Google Meet URL to https://meet.google.com/odi-yqwz-irp",
+      "category": "Embedded Computer 1 (C)",
+      "type": "academic",
+      "due_date": "2026-10-13",
+      "original_date": "2026-10-13",
+      "rolled_over": false,
+      "priority": "high",
+      "status": "pending",
+      "source": "telegram_auto_watcher"
+    },
+    {
+      "id": "task_auto_1791894915",
+      "title": "Cancelled Session: Industrial Sensors",
+      "description": "Class cancelled: Demain pas de TD Capteur et Instrumentation Industrielle",
+      "category": "Industrial Sensors",
+      "type": "academic",
+      "due_date": "2026-10-13",
+      "original_date": "2026-10-10",
+      "rolled_over": true,
+      "priority": "low",
+      "status": "pending",
+      "source": "telegram_auto_watcher"
+    },
+    {
+      "id": "task_auto_1791897753",
+      "title": "New Meet Link: Electrical Machines and Drives (C)",
+      "description": "Updated Google Meet URL to https://meet.google.com/vno-sbzh-zfn",
+      "category": "Electrical Machines and Drives (C)",
+      "type": "academic",
+      "due_date": "2026-10-13",
+      "original_date": "2026-10-13",
+      "rolled_over": false,
+      "priority": "high",
+      "status": "pending",
+      "source": "telegram_auto_watcher"
+    },
+    {
+      "id": "task_auto_1791967797",
+      "title": "Schedule Changed: Control system 2",
+      "description": "Rescheduled to updated slot at 11:00. Notes: Le professeur de Système Asservi 2 propose de rattraper la séance de TP d'hier aujourd'hui à 11h.",
+      "category": "Control system 2",
+      "type": "academic",
+      "due_date": "2026-10-14",
+      "original_date": "2026-10-14",
+      "rolled_over": false,
+      "priority": "medium",
+      "status": "pending",
+      "source": "telegram_auto_watcher"
+    },
+    {
+      "id": "task_auto_1792047961",
+      "title": "Schedule Changed: Automates Programmable industriel 1",
+      "description": "Rescheduled to updated slot at 08:30. Notes: Annonce du cours à 08h30 et du TD à 10h00 avec présence obligatoire.",
+      "category": "Automates Programmable industriel 1",
+      "type": "academic",
+      "due_date": "2026-10-15",
+      "original_date": "2026-10-15",
+      "rolled_over": false,
+      "priority": "medium",
+      "status": "pending",
+      "source": "telegram_auto_watcher"
+    },
+    {
+      "id": "task_auto_1792050575",
+      "title": "Schedule Changed: Industrial Programmable Automation 1 (C)",
+      "description": "Rescheduled to Thursday at updated time. Notes: Ay gatlkm mat9rawch psq m3ndhach khlah cnx b sebat les travaux donc gatlkm khayro nhar n3awdo fih cours et td",
+      "category": "Industrial Programmable Automation 1 (C)",
+      "type": "academic",
+      "due_date": "2026-10-15",
+      "original_date": "2026-10-15",
+      "rolled_over": false,
+      "priority": "medium",
+      "status": "pending",
+      "source": "telegram_auto_watcher"
+    }
+  ],
+  "modules": [
+    {
+      "id": "control_systems_2",
+      "name": "Control Systems 2 (Systèmes Asservis 2)",
+      "prof": "GHERBI",
+      "progress": 0,
+      "color": "#facc15"
+    },
+    {
+      "id": "sensors",
+      "name": "Industrial Sensors & Instrumentation",
+      "prof": "HAFS",
+      "progress": 0,
+      "color": "#e2e8f0"
+    },
+    {
+      "id": "embedded",
+      "name": "Embedded Computer 1 (Calculateur Embarqué)",
+      "prof": "MERABTI",
+      "progress": 0,
+      "color": "#fde68a"
+    },
+    {
+      "id": "power_electronics",
+      "name": "Power Electronics (Électronique de Puissance)",
+      "prof": "MOKHNACHE",
+      "progress": 0,
+      "color": "#d8b4fe"
+    },
+    {
+      "id": "api_1",
+      "name": "Industrial Programmable Automation 1 (API 1)",
+      "prof": "RIGHI",
+      "progress": 0,
+      "color": "#bbf7d0"
+    },
+    {
+      "id": "robotics",
+      "name": "Robotics (Robotique)",
+      "prof": "RAMDANI",
+      "progress": 0,
+      "color": "#60a5fa"
+    },
+    {
+      "id": "innovation",
+      "name": "Innovation Management",
+      "prof": "BABES",
+      "progress": 0,
+      "color": "#94a3b8"
+    },
+    {
+      "id": "machines",
+      "name": "Electrical Machines and Drives",
+      "prof": "CHELLI",
+      "progress": 0,
+      "color": "#cbd5e1"
+    }
+  ],
+  "projects": [
+    {
+      "id": "proj_study_bot",
+      "name": "Study Bot Processing Workflow",
+      "category": "n8n Automation",
+      "progress": 95,
+      "links": {
+        "n8n": "http://localhost:5678/workflow/16qmnSpkAn9tQDEN"
+      },
+      "description": "Whisper audio transcription, Gemini report extraction, and Telegram auto-sync.",
+      "color": "#06b6d4",
+      "icon": "🎙️",
+      "image": "https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-logo.png"
+    },
+    {
+      "id": "proj_chatbot_farm",
+      "name": "Chatbot Farm SaaS",
+      "category": "Web & AI",
+      "progress": 74,
+      "links": {
+        "web": "http://localhost:3000",
+        "n8n": "http://localhost:5678/workflow/Zu9M901h7pX8bvD3"
+      },
+      "description": "Omnichannel router and Next.js frontend.",
+      "color": "#3b82f6",
+      "icon": "🤖",
+      "image": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg"
+    },
+    {
+      "id": "proj_yt_shorts",
+      "name": "YouTube Shorts Automation",
+      "category": "n8n Automation",
+      "progress": 81,
+      "links": {
+        "n8n": "http://localhost:5678/workflow/D2hITsyjP5dVsqBZ"
+      },
+      "description": "Video clipper, audio transcription, and short publishing pipeline.",
+      "color": "#ef4444",
+      "icon": "▶️",
+      "image": "https://www.youtube.com/s/desktop/f28d8407/img/favicon_144x144.png"
+    },
+    {
+      "id": "proj_darija",
+      "name": "Darija Translator",
+      "category": "n8n Automation",
+      "progress": 97,
+      "links": {
+        "n8n": "http://localhost:5678/workflow/9eDt9JDIJqyfsg2a"
+      },
+      "description": "Dialectal Arabic translation pipeline.",
+      "color": "#10b981",
+      "icon": "🇩🇿",
+      "image": ""
+    },
+    {
+      "id": "proj_football_docs",
+      "name": "Football Docs & Commentary Generator",
+      "category": "n8n Automation & Vision",
+      "progress": 72,
+      "links": {
+        "n8n": "http://localhost:5678/workflow/COUk1fsntGTZr6Ar"
+      },
+      "description": "Automated football match video analysis, tactical commentary generation, and scouting document dossier compiler.",
+      "color": "#22c55e",
+      "icon": "⚽",
+      "image": ""
+    },
+    {
+      "id": "proj_wsp_suite",
+      "name": "WSP Hospitality & CRM Automation Suite",
+      "category": "n8n Automation & Real Estate",
+      "progress": 91,
+      "links": {
+        "n8n": "http://localhost:5678/workflow/QOHXjLEGpudJ5cki"
+      },
+      "description": "Complete short-term rental engine: Hospitable calendar sync, automated payment verification, and midnight traveler concierge router.",
+      "color": "#f59e0b",
+      "icon": "🏨",
+      "image": ""
+    },
+    {
+      "id": "proj_khalil_freelance",
+      "name": "Khalil Freelance Automation",
+      "category": "Client Work / Freelance",
+      "progress": 1,
+      "links": {
+        "n8n": "http://localhost:5678"
+      },
+      "description": "Custom client automation pipeline, third-party webhook integrations, and lead processing bots.",
+      "color": "#8b5cf6",
+      "icon": "💼",
+      "image": ""
+    },
+    {
+      "id": "proj_crowdgen",
+      "name": "CrowdGen Auth & Exam Passing Bot",
+      "category": "Web Automation & Testing",
+      "progress": 5,
+      "links": {
+        "web": "https://crowdgen.com"
+      },
+      "description": "Headless browser automation for CrowdGen portal session auth, qualification task monitoring, and automated test-taking assistance.",
+      "color": "#ec4899",
+      "icon": "🎯",
+      "image": ""
+    },
+    {
+      "id": "proj_cs50",
+      "name": "Harvard CS50 Coursework & Mastery",
+      "category": "Computer Science & Education",
+      "progress": 16,
+      "links": {
+        "web": "https://cs50.harvard.edu/x"
+      },
+      "description": "Foundational computer science curriculum: C memory management, algorithms, data structures, Python, SQL, and web engineering problem sets.",
+      "color": "#a855f7",
+      "icon": "🎓",
+      "image": "https://raw.githubusercontent.com/devicons/devicon/master/icons/c/c-original.svg"
+    },
+    {
+      "id": "proj_short_publisher",
+      "name": "Short Publisher (Bypassed Version)",
+      "category": "n8n Automation",
+      "progress": 92,
+      "links": {
+        "n8n": "http://localhost:5678/workflow/B331oWlVWY0Q8s2n"
+      },
+      "description": "Automated YouTube/TikTok short publishing pipeline with metadata optimization and rate-limit bypassing.",
+      "color": "#fb923c",
+      "icon": "🚀",
+      "image": ""
+    }
+  ]
+}
