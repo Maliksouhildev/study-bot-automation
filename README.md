@@ -30,53 +30,28 @@ Online university lectures frequently suffer from last-minute schedule changes, 
 
 ---
 
-## 🏛️ System Architecture
+## 🖥️ System Flow & Dashboard Interface
 
-```mermaid
-flowchart TD
-    subgraph Telegram_Channel["University Telegram Community"]
-        Announcements["Important Announcements Topic"]
-        MeetLinks["Google Meet Links Topic"]
-        Chat["Discussion / Reschedule Notices"]
-    end
+<div align="center">
 
-    subgraph Watcher["Telegram Listener (Telethon MTProto)"]
-        Parser["telegram_schedule_watcher.py"]
-        NLP["URL & Time Slot Parser"]
-    end
+![Study Bot Meeting Session](docs/images/meeting_recorder_screen.png)
 
-    subgraph Scheduler["Autonomous Meeting Bot"]
-        Config[("config.json (Live Hot-Reload)")]
-        BotEngine["bot.py (Schedule Runner)"]
-        Playwright["Playwright Chromium Automation"]
-        Recorder["FFmpeg Screen & Audio Loopback"]
-    end
+*Study Bot Active Meeting Screen: Automated Playwright session joined to lecture room with camera/mic muted, screen audio capture active, and real-time buffer sync.*
 
-    subgraph AIPipeline["AI Transcription & Intelligence (n8n)"]
-        N8n["n8n Webhook Endpoint"]
-        Whisper["Whisper Speech-to-Text"]
-        Gemini["Google Gemini Summarizer"]
-        Artifacts[("Session Reports & Transcripts")]
-    end
+</div>
 
-    subgraph Presentation["Student Web Dashboard"]
-        Server["dashboard/server.py (:5050)"]
-        UI["Interactive Timetable & PDF Viewer"]
-        Tasks["tasks_data.json (Rollover Tasks)"]
-    end
+---
 
-    Telegram_Channel -->|Live Messages| Parser
-    Parser --> NLP
-    NLP -->|Updates URLs & Times| Config
-    Config -->|Hot Reload| BotEngine
-    BotEngine --> Playwright
-    Playwright --> Recorder
-    Recorder -->|POST .mp4/.wav| N8n
-    N8n --> Whisper --> Gemini --> Artifacts
-    Artifacts --> Server
-    Tasks --> Server
-    Server --> UI
-```
+## ⚡ The Autonomous Lecture Recording Pipeline
+
+| Phase | Engine | Responsibility |
+|:------|:-------|:---------------|
+| **1. Schedule & URL Monitoring** | `telegram_schedule_watcher.py` (Telethon) | 24/7 background listener watching class group topics; extracts Google Meet links and detects last-minute timetable changes in real time. |
+| **2. Hot Reload Scheduling** | `bot.py` | Reads `config.json` with hot-reloading; injects randomized 4–6 min jitter to join meetings naturally without looking robotic. |
+| **3. Meeting Automation** | Playwright Chromium | Launches persistent authenticated student profile, navigates to Meet URL, toggles off camera and microphone, and clicks 'Join'. |
+| **4. High-Fidelity Recording** | FFmpeg Loopback | Records screen stream and captures internal stereo speaker audio directly via virtual audio cable (no room echo). |
+| **5. AI Transcription & Notes** | n8n + Whisper + Gemini | Dispatches audio upon lecture conclusion to n8n; transcribes full lecture and synthesizes structured study sheets. |
+| **6. Student Web Control Room** | `dashboard/server.py` (:5050) | Local web interface displaying weekly timetable, session status countdowns, course PDFs, and rollover task assignments. |
 
 ---
 
