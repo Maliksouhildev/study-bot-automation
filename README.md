@@ -133,7 +133,7 @@ cp config.example.json config.json
 Launch the browser authenticator to save your student Google account session:
 
 ```bash
-python login_google.py
+python scripts/login_google.py
 ```
 *Sign in to Google once in the browser window that opens, then close it. The session is saved to `chrome_bot_profile/`.*
 
@@ -142,7 +142,7 @@ Connect your Telegram account via secure QR code login:
 
 ```bash
 pip install qrcode[pil]
-python telegram_login_qr.py
+python scripts/telegram_login_qr.py
 ```
 *Scan the generated QR code in your Telegram mobile app (`Settings → Devices → Link Desktop Device`). The session is saved to `telegram_user.session`.*
 
@@ -180,7 +180,7 @@ Access the dashboard at **[http://localhost:5050](http://localhost:5050)**.
 ### Quick Toggle
 To temporarily toggle bot automation on/off without closing terminals:
 ```bash
-python toggle_bot.py
+python scripts/toggle_bot.py
 ```
 
 ---
@@ -192,13 +192,20 @@ study-bot-automation/
 ├── bot.py                          # Core: schedules & joins Meet, records audio/video
 ├── telegram_schedule_watcher.py    # Core: watches Telegram group for schedule updates
 ├── config.example.json             # Template config for courses and timetable
-├── login_google.py                 # One-time Google login helper
-├── telegram_login_qr.py           # One-time Telegram QR login helper
 ├── requirements.txt                # Python dependencies
 ├── run_study_bot.bat               # Windows launcher script
-├── toggle_bot.py                   # Enable/disable bot via config toggle
-├── Study_Assistant_Workflow.json   # n8n workflow for Whisper STT & Gemini summary
-├── dashboard/
+├── toggle_study_bot.bat            # Quick toggle shortcut
+├── workflows/                      # Modular n8n workflow JSONs
+│   ├── Study_Assistant_Workflow.json
+│   ├── schedule_parser_wf.json
+│   └── study_bot_workflow.json
+├── scripts/                        # Setup & utility scripts
+│   ├── login_google.py             # One-time Google login helper
+│   ├── telegram_login_qr.py        # One-time Telegram QR login helper
+│   ├── telegram_preflight.py       # Telegram connection validator
+│   ├── record_current_session.py   # Manual session recording runner
+│   └── toggle_bot.py               # Enable/disable bot via config toggle
+├── dashboard/                      # Web control room & task monitor
 │   ├── index.html                  # Responsive dark web dashboard UI
 │   ├── server.py                   # Lightweight HTTP server (port 5050)
 │   ├── tasks_data.json             # Task and assignment rollover state
