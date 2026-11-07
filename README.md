@@ -1,298 +1,214 @@
 # 🤖 Study Bot — Autonomous University Lecture Recorder & AI Study Assistant
 
-> Automatically joins your online Google Meet classes, records audio & video, transcribes with Whisper, generates AI-powered course summaries, and serves everything through a live web dashboard.
+<div align="center">
+
+[![Python](https://img.shields.io/badge/Runtime-Python%203.10+-3776ab?style=for-the-badge&logo=python)](https://python.org)
+[![Playwright](https://img.shields.io/badge/Automation-Playwright%20Chromium-2eaa4b?style=for-the-badge&logo=playwright)](https://playwright.dev)
+[![Telethon](https://img.shields.io/badge/Telegram-Telethon%20MTProto-2ca5e0?style=for-the-badge&logo=telegram)](https://telethon.readthedocs.io)
+[![FFmpeg](https://img.shields.io/badge/Audio%2FVideo-FFmpeg-red?style=for-the-badge&logo=ffmpeg)](https://ffmpeg.org)
+[![n8n](https://img.shields.io/badge/AI%20Orchestrator-n8n-ea4b71?style=for-the-badge&logo=n8n)](https://n8n.io)
+[![License](https://img.shields.io/badge/License-MIT-orange?style=for-the-badge)](LICENSE)
+
+**An autonomous study platform that monitors university Telegram groups for Google Meet links and schedule updates, automatically joins online lectures, records HD video & internal audio, transcribes with Whisper, and synthesizes study notes into a live web dashboard.**
+
+[Architecture](#-system-architecture) • [Features](#-key-features) • [Quick Start](#-quick-start) • [Configuration](#-configuration-guide) • [Dashboard](#-live-web-dashboard) • [Components](#-component-reference)
+
+</div>
 
 ---
 
-## 🏗️ Architecture
+## 📖 Overview
 
+Online university lectures frequently suffer from last-minute schedule changes, missed links posted across cluttered Telegram channels, and lengthy unindexed recordings.
+
+**Study Bot** runs 24/7 as an autonomous academic assistant:
+1. **Listens to Telegram in real time**: Scans class channels and topic threads for new Google Meet links, cancellations, and rescheduled times.
+2. **Auto-joins Google Meet**: Uses Playwright to launch a persistent Chromium browser profile, automatically joins meetings at scheduled times, and mutes mic/camera.
+3. **Lossless Recording**: Records screen and captures internal system audio directly via virtual loopback and FFmpeg.
+4. **AI Transcription & Synthesis**: Sends completed session audio to an n8n pipeline for Whisper STT transcription and Gemini lecture notes summarization.
+5. **Interactive Student Dashboard**: Visualizes class timetables, AI summaries, downloadable PDFs, and task rollover tracking at `http://localhost:5050`.
+
+---
+
+## 🏛️ System Architecture
+
+```mermaid
+flowchart TD
+    subgraph Telegram_Channel["University Telegram Community"]
+        Announcements["Important Announcements Topic"]
+        MeetLinks["Google Meet Links Topic"]
+        Chat["Discussion / Reschedule Notices"]
+    end
+
+    subgraph Watcher["Telegram Listener (Telethon MTProto)"]
+        Parser["telegram_schedule_watcher.py"]
+        NLP["URL & Time Slot Parser"]
+    end
+
+    subgraph Scheduler["Autonomous Meeting Bot"]
+        Config[("config.json (Live Hot-Reload)")]
+        BotEngine["bot.py (Schedule Runner)"]
+        Playwright["Playwright Chromium Automation"]
+        Recorder["FFmpeg Screen & Audio Loopback"]
+    end
+
+    subgraph AIPipeline["AI Transcription & Intelligence (n8n)"]
+        N8n["n8n Webhook Endpoint"]
+        Whisper["Whisper Speech-to-Text"]
+        Gemini["Google Gemini Summarizer"]
+        Artifacts[("Session Reports & Transcripts")]
+    end
+
+    subgraph Presentation["Student Web Dashboard"]
+        Server["dashboard/server.py (:5050)"]
+        UI["Interactive Timetable & PDF Viewer"]
+        Tasks["tasks_data.json (Rollover Tasks)"]
+    end
+
+    Telegram_Channel -->|Live Messages| Parser
+    Parser --> NLP
+    NLP -->|Updates URLs & Times| Config
+    Config -->|Hot Reload| BotEngine
+    BotEngine --> Playwright
+    Playwright --> Recorder
+    Recorder -->|POST .mp4/.wav| N8n
+    N8n --> Whisper --> Gemini --> Artifacts
+    Artifacts --> Server
+    Tasks --> Server
+    Server --> UI
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      TELEGRAM GROUP                         │
-│              (e.g. "Automatique L3" group)                  │
-│  Professors post Meet links, schedule changes, files, etc.  │
-└───────────────────────┬─────────────────────────────────────┘
-                        │ Live monitoring (Telethon)
-                        ▼
-           ┌────────────────────────┐
-           │ telegram_schedule_     │
-           │ watcher.py             │
-           │ • Watches topics       │
-           │ • Extracts Meet URLs   │
-           │ • Updates config.json  │
-           │ • Detects schedule     │
-           │   changes (time/day)   │
-           └──────────┬─────────────┘
-                      │ writes to
-                      ▼
-              ┌──────────────┐
-              │ config.json  │ ◄── Your class schedule
-              └──────┬───────┘     (auto-updated by watcher)
-                     │ reads
-                     ▼
-            ┌──────────────────┐      ┌───────────────────┐
-            │     bot.py       │      │    n8n Workflow    │
-            │ • Schedules jobs │─────►│ • Whisper STT      │
-            │ • Joins Meet     │ POST │ • Gemini summary   │
-            │ • Records audio  │      │ • Generates study  │
-            │ • Records video  │      │   prompt & report  │
-            │ • Sends to n8n   │      └───────┬───────────┘
-            └──────────────────┘              │ writes
-                                              ▼
-                                    ┌────────────────────┐
-                                    │  recordings/       │
-                                    │  *_report.md       │
-                                    │  *_transcript.txt  │
-                                    │  *_master_prompt.md│
-                                    └─────────┬──────────┘
-                                              │ served by
-                                              ▼
-                                    ┌────────────────────┐
-                                    │  dashboard/        │
-                                    │  server.py :5050   │
-                                    │  index.html        │
-                                    │  course_materials/  │
-                                    └────────────────────┘
-```
 
 ---
 
-## 📋 Prerequisites
+## ✨ Key Features
 
-| Requirement | Version | Notes |
-|---|---|---|
-| **Python** | 3.10+ | Tested on 3.14 |
-| **Node.js** | 18+ | Only if using n8n |
-| **FFmpeg** | Latest | Must be in system `PATH` |
-| **Google Chrome** | Latest | Used by Playwright |
-| **n8n** | 1.0+ | Self-hosted, for AI pipeline |
-| **Telegram account** | — | To monitor your class group |
-| **Google account** | — | To join Google Meet classes |
-
-### Windows-Specific
-- The bot uses `msvcrt` for file locking (Windows only). Linux/Mac would need a small tweak to use `fcntl`.
+- ⚡ **Zero-Miss Class Attendance**: Automatically joins Google Meet sessions using your authenticated Google Chrome profile.
+- 📡 **Real-Time Telegram Schedule Watcher**: Tracks pinned messages and topic threads; updates Meet links dynamically without manual config changes.
+- 🎙️ **Internal Loopback Recording**: Captures crisp professor audio directly without microphone room echo.
+- 📝 **Structured AI Lecture Summaries**: Generates Markdown executive summaries, formulas, homework assignments, and key takeaways.
+- 📊 **Local Academic Dashboard**: Web interface showing weekly schedule, live session status countdowns, course PDFs, and pending tasks.
+- 🔒 **Zero-Leakage Privacy**: All credentials, Chrome user data, Telegram sessions, and recorded videos remain strictly local (`.gitignore` enforced).
 
 ---
 
-## 🚀 Quick Start (For Your Friend)
+## 🚀 Quick Start
 
-### Step 1: Clone the Repo
+### 1. Prerequisites
+- **Python**: 3.10+ (tested on Python 3.11/3.12)
+- **Node.js & n8n**: 18+ (optional, for AI pipeline)
+- **FFmpeg**: Configured in system `PATH`
+- **Google Chrome**: Installed on the host machine
+
+### 2. Installation
 
 ```bash
+# Clone repository
 git clone https://github.com/Maliksouhildev/study-bot-automation.git
 cd study-bot-automation
-```
 
-### Step 2: Install Python Dependencies
-
-```bash
+# Install Python requirements
 pip install -r requirements.txt
 playwright install chromium
 ```
 
-### Step 3: Install FFmpeg
+### 3. Verify FFmpeg
 
-Download from [ffmpeg.org](https://ffmpeg.org/download.html) and add to your system `PATH`.
-
-Verify:
 ```bash
 ffmpeg -version
 ```
 
-### Step 4: Create Your Own `config.json`
+### 4. Configure Your Schedule
 
-Copy the template and fill in your schedule:
+Create your local `config.json` from the provided template:
 
 ```bash
-copy config.example.json config.json
+cp config.example.json config.json
 ```
 
-Edit `config.json` with your own:
-- Class names, days, times
-- Google Meet URLs (will be auto-updated by the Telegram watcher)
-- Professor names
-- Your Chrome profile path
+---
 
-> [!IMPORTANT]
-> Each person has their **own** `config.json` — it's in `.gitignore` and won't be pushed. Your schedule and Meet links are completely independent.
+## ⚙️ Configuration Guide
 
-### Step 5: Log In to Google (One-Time)
+### 1. One-Time Google Authentication
+Launch the browser authenticator to save your student Google account session:
 
 ```bash
 python login_google.py
 ```
+*Sign in to Google once in the browser window that opens, then close it. The session is saved to `chrome_bot_profile/`.*
 
-A Chrome window opens → log into your Google account → close the window. Your session is saved in `chrome_bot_profile/` permanently.
-
-### Step 6: Log In to Telegram (One-Time)
+### 2. One-Time Telegram Authentication
+Connect your Telegram account via secure QR code login:
 
 ```bash
 pip install qrcode[pil]
 python telegram_login_qr.py
 ```
+*Scan the generated QR code in your Telegram mobile app (`Settings → Devices → Link Desktop Device`). The session is saved to `telegram_user.session`.*
 
-Scan the QR code with your Telegram app (Settings → Devices → Link Desktop Device). Your session is saved in `telegram_user.session`.
-
-> [!NOTE]
-> Each person creates their **own** `telegram_user.session`. This file is in `.gitignore` and is never shared. Your Telegram login is completely separate from anyone else's.
-
-### Step 7: Configure Your Telegram Group
-
-In `telegram_schedule_watcher.py`, update these constants to match **your** Telegram group:
+### 3. Configure Telegram Group IDs
+In `telegram_schedule_watcher.py`, configure your target group:
 
 ```python
-GROUP_ID = -100XXXXXXXXXX  # Your Telegram group ID
-TOPIC_IMPORTANT = 989       # Topic ID for important announcements
-TOPIC_MEET = 993            # Topic ID for Meet links
-TOPIC_DISCUSSION = 987      # Topic ID for discussion
+GROUP_ID = -100XXXXXXXXXX   # Your Telegram group ID
+TOPIC_IMPORTANT = 989        # Announcements topic ID
+TOPIC_MEET = 993             # Meet links topic ID
 ```
 
-> **How to find your Group ID:** Add [@userinfobot](https://t.me/userinfobot) to your group, or forward a message from the group to it.
+---
 
-### Step 8: Set Up n8n (AI Pipeline — Optional)
+## 🖥️ Running Study Bot
 
-1. Install n8n: `npm install -g n8n`
-2. Start n8n: `n8n start`
-3. Open `http://localhost:5678`
-4. Import the workflow: go to **Workflows → Import** and select `Study_Assistant_Workflow.json`
-5. Configure your API keys in n8n (OpenAI/Gemini for transcription & summarization)
-
-> [!TIP]
-> The bot works without n8n — it will still join and record classes. The n8n pipeline adds AI transcription and summaries on top.
-
-### Step 9: Run Everything
-
-**Option A — Batch file (Windows):**
+### Option A: Complete Launcher (Windows)
 ```bash
 run_study_bot.bat
 ```
 
-**Option B — Manual (two terminals):**
+### Option B: Manual Multi-Terminal Execution
 ```bash
-# Terminal 1: Telegram watcher
+# Terminal 1: Telegram Schedule Watcher
 python telegram_schedule_watcher.py
 
-# Terminal 2: Meeting bot
+# Terminal 2: Autonomous Meeting Bot
 python bot.py
-```
 
-**Option C — Dashboard only:**
+# Terminal 3: Web Dashboard
+cd dashboard && python server.py
+```
+Access the dashboard at **[http://localhost:5050](http://localhost:5050)**.
+
+### Quick Toggle
+To temporarily toggle bot automation on/off without closing terminals:
 ```bash
-cd dashboard
-python server.py
-# Open http://localhost:5050
+python toggle_bot.py
 ```
 
 ---
 
-## 📁 Project Structure
+## 🗂️ Project Structure
 
-```
-study_bot/
+```text
+study-bot-automation/
 ├── bot.py                          # Core: schedules & joins Meet, records audio/video
 ├── telegram_schedule_watcher.py    # Core: watches Telegram group for schedule updates
-├── config.json                     # Your class schedule (auto-updated, gitignored)
-├── config.example.json             # Template config for new users
+├── config.example.json             # Template config for courses and timetable
 ├── login_google.py                 # One-time Google login helper
 ├── telegram_login_qr.py           # One-time Telegram QR login helper
 ├── requirements.txt                # Python dependencies
-├── run_study_bot.bat               # Windows launcher (both scripts)
+├── run_study_bot.bat               # Windows launcher script
 ├── toggle_bot.py                   # Enable/disable bot via config toggle
-├── toggle_study_bot.bat            # Quick toggle shortcut
-├── Study_Assistant_Workflow.json   # n8n workflow (AI pipeline)
-├── study_bot_workflow.json         # n8n workflow (alternate)
+├── Study_Assistant_Workflow.json   # n8n workflow for Whisper STT & Gemini summary
 ├── dashboard/
-│   ├── index.html                  # Web dashboard UI
-│   ├── server.py                   # Python HTTP server (port 5050)
-│   └── course_materials/           # Uploaded lecture PDFs
-├── recordings/                     # (gitignored) Recorded sessions
-│   ├── *_report.md                 # AI-generated session reports
-│   ├── *_transcript.txt            # Raw transcriptions
-│   └── *_master_prompt.md          # Generated study prompts
-├── chrome_bot_profile/             # (gitignored) Chrome session data
-└── telegram_user.session           # (gitignored) Telegram auth session
+│   ├── index.html                  # Responsive dark web dashboard UI
+│   ├── server.py                   # Lightweight HTTP server (port 5050)
+│   ├── tasks_data.json             # Task and assignment rollover state
+│   └── course_materials/           # Uploaded syllabus & lecture PDFs
 ```
 
 ---
 
-## ⚙️ How Each Component Works
+## 🤝 Contributing & License
 
-### `bot.py` — The Meeting Bot
-- Reads `config.json` for the weekly schedule
-- Uses `schedule` library to trigger at the right day/time
-- Adds a random delay (4–6 min) to appear human
-- Uses Playwright to launch Chrome, join Google Meet, disable mic/cam
-- Captures audio via virtual audio cable + FFmpeg
-- Records screen via FFmpeg
-- When class ends (duration elapsed), stops recording and POSTs files to n8n webhook
-- Watches `config.json` for live changes (hot reload)
+Contributions, improvements, and issues are welcome.
 
-### `telegram_schedule_watcher.py` — Telegram Monitor
-- Connects to your Telegram account via Telethon
-- Monitors your class group for:
-  - New Google Meet links → updates `config.json` URLs
-  - Schedule changes (day/time) → updates `config.json` schedule
-  - File uploads → can be forwarded/saved
-- Scans message history on startup for any missed updates
-- Runs live listener for real-time updates
-
-### `dashboard/` — Web Dashboard
-- Simple Python HTTP server on port 5050
-- Shows your weekly timetable with color-coded modules
-- Highlights current/active sessions
-- Displays AI-generated session reports and transcripts
-- Links to uploaded course PDFs
-- API endpoints: `/api/status`, `/api/data`
-
-### n8n Workflow — AI Pipeline
-- Receives recorded audio/video from `bot.py` via webhook
-- Runs Whisper for speech-to-text transcription
-- Feeds transcript to Gemini/GPT for intelligent summarization
-- Generates structured study reports and revision prompts
-- Saves everything back to `recordings/` folder
-
----
-
-## 🔒 Privacy & Security
-
-| File | Contains | Shared? |
-|---|---|---|
-| `config.json` | Your meet URLs, schedule, Chrome path | ❌ gitignored |
-| `telegram_user.session` | Your Telegram auth token | ❌ gitignored |
-| `chrome_bot_profile/` | Your Google login cookies | ❌ gitignored |
-| `recordings/` | Recorded lectures | ❌ gitignored |
-| `config.example.json` | Empty template | ✅ in repo |
-
-> [!CAUTION]
-> **NEVER** commit `telegram_user.session` or `chrome_bot_profile/`. They contain your active login sessions. Each user generates their own during setup.
-
----
-
-## 🤝 Multi-User Setup
-
-This bot is designed so multiple people can use the **same codebase** independently:
-
-1. Each person clones the repo
-2. Each person creates their own `config.json` from the template
-3. Each person logs into their own Google & Telegram accounts
-4. All personal data stays local (gitignored)
-5. No interference between users — everything is isolated by design
-
----
-
-## ❓ Troubleshooting
-
-| Problem | Solution |
-|---|---|
-| `ProcessSingleton` Chrome error | Close all Chrome instances, delete `chrome_bot_profile/SingletonLock` |
-| `Another watcher instance is already running` | Delete `watcher.lock` file |
-| Bot doesn't join on time | Check `config.json` times match your timezone (Algeria/UTC+1) |
-| n8n webhook fails | Make sure n8n is running on `localhost:5678` and workflow is active |
-| Telegram connection fails | Run `python telegram_login_qr.py` again to re-authenticate |
-| No audio recorded | Install a virtual audio cable (e.g., VB-CABLE) or check FFmpeg |
-
----
-
-## 📜 License
-
-MIT — Use it, share it, modify it freely.
+Distributed under the **MIT License**. Created & maintained by [Maliksouhildev](https://github.com/Maliksouhildev).
