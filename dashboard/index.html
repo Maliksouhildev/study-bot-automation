@@ -1746,14 +1746,69 @@
             renderMaterials();
           }
           if (data.reports && data.reports.length > 0) {
-            // Merge with SESSIONS if matching
-            data.reports.forEach(rep => {
-              const existing = SESSIONS.find(s => s.course_name.toLowerCase().includes(rep.course_name.toLowerCase()));
-              if (existing) {
-                if (rep.transcript) existing.transcript = rep.transcript;
-                if (rep.master_prompt) existing.master_prompt = rep.master_prompt;
+            const realSessions = data.reports.filter(r => r.course_name && !r.course_name.toLowerCase().startsWith("test_")).map((rep, idx) => {
+              const canon = rep.course_name.split(" (")[0].replace(/_/g, " ").trim();
+              const hasTranscript = !!(rep.transcript && rep.transcript.trim().length > 100);
+              
+              let formattedSummary = "<p>Report content processing...</p>";
+              if (rep.content) {
+                formattedSummary = rep.content
+                  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                  .replace(/^### (.*$)/gim, '<h4>$1</h4>')
+                  .replace(/^## (.*$)/gim, '<h3>$1</h3>')
+                  .replace(/^# (.*$)/gim, '<h2>$1</h2>')
+                  .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+                  .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+                  .replace(/`([^`]+)`/gim, '<code>$1</code>')
+                  .replace(/^\s*-\s+(.*$)/gim, '<li>$1</li>')
+                  .replace(/\n\n+/gim, '<br><br>');
               }
+
+              const cLower = (rep.content || "").toLowerCase();
+              const isMalikCalled = cLower.includes("malik_called: true") || cLower.includes("malik mehdid");
+              const isHomework = cLower.includes("homework_assigned: true") || cLower.includes("devoir");
+              const isExam = cLower.includes("exam_or_quiz_announced: true");
+
+              let prof = "MOKHNACHE";
+              if (canon.includes("Control")) prof = "GHERBI";
+              else if (canon.includes("Embedded")) prof = "MERABTI";
+              else if (canon.includes("Sensors")) prof = "HAFS";
+              else if (canon.includes("Innovation")) prof = "BABES";
+              else if (canon.includes("Robotique")) prof = "RAMDANI";
+              else if (canon.includes("Automation") || canon.includes("Programmable")) prof = "RIGHI";
+
+              return {
+                id: `rec-${rep.date}-${idx}`,
+                course_name: rep.course_name,
+                module_canonical: canon,
+                date: rep.date,
+                time: "Class Session",
+                duration: hasTranscript ? `${Math.max(45, Math.round(rep.transcript.length / 400))} min` : "84 min",
+                professor: prof,
+                meet: "https://meet.google.com/",
+                hasRec: true,
+                switches: {
+                  malikCalled: isMalikCalled,
+                  malikDetail: isMalikCalled ? "Malik was directly mentioned/called during the session." : "No direct question was asked specifically to Malik Mehdid.",
+                  homeworkAssigned: isHomework,
+                  homeworkDetail: isHomework ? "Homework tasks assigned in session. Review report summary." : "No explicit homework assigned.",
+                  examAnnounced: isExam,
+                  examDetail: isExam ? "Exam/test announcement made in session." : "Continuous assessment applies.",
+                  peersCalled: [],
+                  teacherAnnouncement: "Session captured, transcribed and analyzed via AI pipeline."
+                },
+                transcript: rep.transcript || "No raw transcript text logged for this session yet.",
+                master_prompt: rep.master_prompt || "",
+                summary: formattedSummary
+              };
             });
+
+            if (realSessions.length > 0) {
+              SESSIONS = realSessions;
+              activeSession = SESSIONS[0];
+              renderArchiveList();
+              selectSession(activeSession);
+            }
           }
           if (data.config && Array.isArray(data.config.meetings)) {
             // Live auto-update CURRICULUM from active bot config

@@ -737,7 +737,7 @@ def join_meeting(meeting, skip_delay=False, class_end=None):
             if audio_filename and os.path.exists(audio_filename):
                 with open(audio_filename, "rb") as f:
                     files = {"file": (os.path.basename(audio_filename), f, "audio/mpeg")}
-                    response = requests.post(webhook_url, data=data_payload, files=files, timeout=300)
+                    response = requests.post(webhook_url, data=data_payload, files=files, timeout=600)
             else:
                 response = requests.post(webhook_url, json=data_payload, timeout=60)
 

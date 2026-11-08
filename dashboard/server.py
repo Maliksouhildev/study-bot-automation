@@ -10,8 +10,23 @@ import urllib.request
 PORT = 5050
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STUDY_BOT_DIR = os.path.dirname(BASE_DIR)
-RECORDINGS_DIR = os.path.join(STUDY_BOT_DIR, "recordings")
 CONFIG_PATH = os.path.join(STUDY_BOT_DIR, "config.json")
+
+def get_recordings_dir():
+    if os.path.exists(CONFIG_PATH):
+        try:
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+                out = cfg.get("settings", {}).get("output_dir")
+                if out and os.path.exists(out):
+                    return out
+        except Exception:
+            pass
+    if os.path.exists(r"F:\study_bot_recordings"):
+        return r"F:\study_bot_recordings"
+    return os.path.join(STUDY_BOT_DIR, "recordings")
+
+RECORDINGS_DIR = get_recordings_dir()
 TASKS_DATA_PATH = os.path.join(BASE_DIR, "tasks_data.json")
 N8N_PROMPT_WEBHOOK = "http://localhost:5678/webhook/generate-study-prompt"
 
