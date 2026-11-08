@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-11-08 10:56:10",
+  "last_updated": "2026-11-08 12:27:38",
   "total_messages": 81,
   "messages": [
     {
@@ -1099,9 +1099,9 @@
       "meet_url": null,
       "has_arabic": false,
       "is_valid": false,
-      "status": "superseded",
-      "validity_note": "Superseded by message #4171",
-      "superseded_by": 4171
+      "status": "expired",
+      "validity_note": "Event date (2026-10-21) has passed",
+      "superseded_by": null
     },
     {
       "id": 4209,
@@ -1159,9 +1159,9 @@
       "meet_url": null,
       "has_arabic": false,
       "is_valid": false,
-      "status": "expired",
-      "validity_note": "Event date (2026-10-21) has passed",
-      "superseded_by": null
+      "status": "superseded",
+      "validity_note": "Superseded by message #4214",
+      "superseded_by": 4214
     },
     {
       "id": 4117,

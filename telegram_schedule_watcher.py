@@ -247,7 +247,12 @@ DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sun
 
 def _class_window(meeting, ref=None):
     ref = ref or datetime.now()
-    start = datetime.combine(ref.date(), datetime.strptime(meeting["time"], "%H:%M").time())
+    t = datetime.strptime(meeting["time"], "%H:%M").time()
+    tz = getattr(ref, "tzinfo", None)
+    if tz:
+        start = datetime.combine(ref.date(), t, tzinfo=tz)
+    else:
+        start = datetime.combine(ref.date(), t)
     return start, start + timedelta(minutes=meeting.get("duration_minutes", 90))
 
 def save_config(config):
@@ -561,13 +566,18 @@ def parse_locally_fallback(message_text, msg_date=None):
     Activates when n8n parser times out or is unreachable.
     """
     msg_dt = msg_date or datetime.now()
+    if getattr(msg_dt, "tzinfo", None) is not None:
+        msg_dt_cmp = msg_dt.astimezone(timezone(timedelta(hours=1)))
+    else:
+        msg_dt_cmp = msg_dt
+
     category = classify_message_semantics(message_text)
     found_subject = match_canonical_subject(message_text)
-    target_date = extract_explicit_or_relative_date(message_text, msg_dt)
+    target_date = extract_explicit_or_relative_date(message_text, msg_dt_cmp)
     target_time = extract_target_time(message_text)
 
     cfg = load_config()
-    today_name = DAYS[msg_dt.weekday()]
+    today_name = DAYS[msg_dt_cmp.weekday()]
 
     if not found_subject:
         lower = message_text.lower()
@@ -575,8 +585,8 @@ def parse_locally_fallback(message_text, msg_date=None):
         is_cours_msg = any(w in lower for w in ["cours", "cour", "cours magistral"])
         for m in cfg.get("meetings", []):
             if m.get("day_of_week", "").lower() == today_name:
-                s_dt, e_dt = _class_window(m, msg_dt)
-                if s_dt - timedelta(minutes=60) <= msg_dt <= e_dt + timedelta(minutes=30):
+                s_dt, e_dt = _class_window(m, msg_dt_cmp)
+                if s_dt - timedelta(minutes=60) <= msg_dt_cmp <= e_dt + timedelta(minutes=30):
                     base_name = re.sub(r'\s*\((?:c|td|tp|td/tp)\)', '', m.get("name", ""), flags=re.I).strip()
                     if is_td_msg and is_cours_msg:
                         found_subject = base_name
