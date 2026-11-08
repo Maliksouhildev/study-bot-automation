@@ -733,6 +733,7 @@
     <div class="nav-tab-group">
       <button class="main-nav-tab active" id="btnTabTimetable" onclick="switchMainTab('timetable')">📅 Timetable & Sessions</button>
       <button class="main-nav-tab" id="btnTabJarvis" onclick="switchMainTab('jarvis')">⚡ Jarvis Mission Control <span class="badge-count" id="headerTaskBadge">0</span></button>
+      <button class="main-nav-tab" id="btnTabTelegram" onclick="switchMainTab('telegram')">📡 Telegram Memory & Intel <span class="badge-count" id="headerTelegramBadge" style="background:#0284c7;">0</span></button>
     </div>
 
     <div class="nav-actions" style="display: flex; align-items: center; gap: 12px;">
@@ -983,6 +984,64 @@
 
       </div>
 
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       TAB 3: TELEGRAM MEMORY & MULTILINGUAL INTELLIGENCE FEED
+       ═══════════════════════════════════════════════════════════════ -->
+  <div id="viewTelegramMemory" style="display: none; flex-direction: column; gap: 24px;">
+
+    <!-- TOP TELEGRAM INTEL SUMMARY -->
+    <div class="mission-card">
+      <div class="mission-card-head" style="flex-wrap: wrap; gap: 16px;">
+        <div>
+          <div class="mission-card-title"><span>📡</span> Telegram Persistent Message Memory & Validity Engine</div>
+          <div class="mission-card-subtitle">Real-time memory tracking for announcements, cancellations, exams & Darija discussions with date anchoring and anti-reversal integrity.</div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-action btn-action-prompt" onclick="refreshTelegramMemory()" style="padding: 6px 14px; font-size: 0.8rem;">🔄 Sync Memory</button>
+        </div>
+      </div>
+
+      <!-- METRIC CHIPS -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 14px;">
+        <div style="background: rgba(15,23,42,0.6); border: 1px solid var(--card-border); border-radius: 10px; padding: 12px;">
+          <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800;">Total Memory Items</div>
+          <div id="teleTotalCount" style="font-size: 1.5rem; font-weight: 800; color: #38bdf8; margin-top: 4px;">0</div>
+        </div>
+        <div style="background: rgba(15,23,42,0.6); border: 1px solid var(--card-border); border-radius: 10px; padding: 12px;">
+          <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800;">Active Exams & Interros</div>
+          <div id="teleExamCount" style="font-size: 1.5rem; font-weight: 800; color: #f43f5e; margin-top: 4px;">0</div>
+        </div>
+        <div style="background: rgba(15,23,42,0.6); border: 1px solid var(--card-border); border-radius: 10px; padding: 12px;">
+          <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800;">Active Cancellations</div>
+          <div id="teleCancelCount" style="font-size: 1.5rem; font-weight: 800; color: #fbbf24; margin-top: 4px;">0</div>
+        </div>
+        <div style="background: rgba(15,23,42,0.6); border: 1px solid var(--card-border); border-radius: 10px; padding: 12px;">
+          <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800;">Unicode & BiDi Health</div>
+          <div style="font-size: 0.85rem; font-weight: 700; color: #34d399; margin-top: 8px;">🛡️ Anti-Reversal Active</div>
+        </div>
+      </div>
+
+      <!-- FILTER TABS & SEARCH -->
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-top: 18px; border-top: 1px solid var(--card-border); padding-top: 14px;">
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <button class="task-filter-tab active" id="teleFilterAll" onclick="setTelegramFilter('all')">All Messages</button>
+          <button class="task-filter-tab" id="teleFilterExams" onclick="setTelegramFilter('exam')">📝 Exams & Quizzes</button>
+          <button class="task-filter-tab" id="teleFilterCancel" onclick="setTelegramFilter('cancellation')">🚫 Cancellations</button>
+          <button class="task-filter-tab" id="teleFilterResched" onclick="setTelegramFilter('reschedule')">⏰ Rescheduled</button>
+          <button class="task-filter-tab" id="teleFilterQuestions" onclick="setTelegramFilter('question')">💬 Questions & Darija</button>
+          <button class="task-filter-tab" id="teleFilterMeet" onclick="setTelegramFilter('meet_link')">🔗 Meet Links</button>
+        </div>
+        <input type="text" id="teleSearchInput" placeholder="Search by subject, Arabic or French text..." oninput="renderTelegramMemoryFeed()" style="background: #090e17; border: 1px solid var(--card-border); border-radius: 8px; color: #fff; padding: 6px 12px; font-size: 0.8rem; min-width: 260px;">
+      </div>
+    </div>
+
+    <!-- MESSAGES FEED CONTAINER -->
+    <div id="telegramFeedContainer" style="display: flex; flex-direction: column; gap: 12px;">
+      <!-- Populated via JavaScript -->
     </div>
 
   </div>
@@ -1769,26 +1828,194 @@
       }
     }
 
-    // 2. Tab Navigation Switcher
+    // 2. Tab Navigation Switcher (Timetable, Jarvis, Telegram Memory)
     function switchMainTab(tab) {
       const btnTime = document.getElementById("btnTabTimetable");
       const btnJarv = document.getElementById("btnTabJarvis");
+      const btnTele = document.getElementById("btnTabTelegram");
       const viewTime = document.getElementById("viewTimetable");
       const viewJarv = document.getElementById("viewJarvisControl");
+      const viewTele = document.getElementById("viewTelegramMemory");
+
+      btnTime.classList.remove("active");
+      btnJarv.classList.remove("active");
+      if (btnTele) btnTele.classList.remove("active");
+
+      viewTime.style.display = "none";
+      viewJarv.style.display = "none";
+      if (viewTele) viewTele.style.display = "none";
 
       if (tab === 'timetable') {
         btnTime.classList.add("active");
-        btnJarv.classList.remove("active");
         viewTime.style.display = "flex";
-        viewJarv.style.display = "none";
-      } else {
+      } else if (tab === 'jarvis') {
         btnJarv.classList.add("active");
-        btnTime.classList.remove("active");
-        viewTime.style.display = "none";
         viewJarv.style.display = "flex";
         loadTasksData();
         loadProfessorIntel();
+      } else if (tab === 'telegram') {
+        if (btnTele) btnTele.classList.add("active");
+        if (viewTele) viewTele.style.display = "flex";
+        refreshTelegramMemory();
       }
+    }
+
+    // ── TELEGRAM MEMORY STATE & RENDERER ──────────────────────────────────
+    let telegramMemoryData = [];
+    let currentTeleFilter = "all";
+
+    async function refreshTelegramMemory() {
+      try {
+        const resp = await fetch("http://localhost:5050/api/telegram-memory");
+        if (resp.ok) {
+          const data = await resp.json();
+          telegramMemoryData = data.messages || [];
+          renderTelegramMemoryFeed();
+          updateTelegramBadges();
+        }
+      } catch (e) {
+        console.error("Failed to load telegram memory:", e);
+      }
+    }
+
+    function setTelegramFilter(filter) {
+      currentTeleFilter = filter;
+      document.querySelectorAll("[id^='teleFilter']").forEach(b => b.classList.remove("active"));
+      const activeBtn = {
+        "all": "teleFilterAll",
+        "exam": "teleFilterExams",
+        "cancellation": "teleFilterCancel",
+        "reschedule": "teleFilterResched",
+        "question": "teleFilterQuestions",
+        "meet_link": "teleFilterMeet"
+      }[filter] || "teleFilterAll";
+      const b = document.getElementById(activeBtn);
+      if (b) b.classList.add("active");
+      renderTelegramMemoryFeed();
+    }
+
+    function updateTelegramBadges() {
+      const total = telegramMemoryData.length;
+      const exams = telegramMemoryData.filter(m => m.category === 'exam' && m.is_valid).length;
+      const cancels = telegramMemoryData.filter(m => m.category === 'cancellation' && m.is_valid).length;
+
+      const badge = document.getElementById("headerTelegramBadge");
+      if (badge) badge.innerText = total;
+
+      const totalEl = document.getElementById("teleTotalCount");
+      if (totalEl) totalEl.innerText = total;
+
+      const examEl = document.getElementById("teleExamCount");
+      if (examEl) examEl.innerText = exams;
+
+      const cancelEl = document.getElementById("teleCancelCount");
+      if (cancelEl) cancelEl.innerText = cancels;
+    }
+
+    function renderTelegramMemoryFeed() {
+      const container = document.getElementById("telegramFeedContainer");
+      if (!container) return;
+
+      const search = (document.getElementById("teleSearchInput")?.value || "").toLowerCase().trim();
+
+      const filtered = telegramMemoryData.filter(m => {
+        if (currentTeleFilter !== "all" && m.category !== currentTeleFilter) return false;
+        if (search) {
+          const combined = `${m.raw_text} ${m.subject || ''} ${m.category} ${m.topic_name} ${m.target_date || ''}`.toLowerCase();
+          if (!combined.includes(search)) return false;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 40px; color: var(--text-muted); background: #090e17; border-radius: 12px; border: 1px dashed var(--card-border);">
+            📡 No Telegram messages found matching your filter criteria.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(m => {
+        const isExam = m.category === "exam";
+        const isCancel = m.category === "cancellation";
+        const isQuestion = m.category === "question";
+        const isMeet = m.category === "meet_link";
+
+        const badgeColor = isExam ? "#f43f5e" : (isCancel ? "#f59e0b" : (isMeet ? "#a855f7" : (isQuestion ? "#38bdf8" : "#94a3b8")));
+        const badgeBg = isExam ? "rgba(244,63,94,0.15)" : (isCancel ? "rgba(245,158,11,0.15)" : (isMeet ? "rgba(168,85,247,0.15)" : "rgba(56,189,248,0.15)"));
+
+        const validityBadge = m.is_valid 
+          ? `<span style="background: rgba(34,197,94,0.2); color: #4ade80; padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 800;">● VALID / ACTIVE</span>`
+          : `<span style="background: rgba(148,163,184,0.2); color: #94a3b8; padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700;">○ ${m.status?.toUpperCase() || 'EXPIRED'}</span>`;
+
+        const targetDatePill = m.target_date ? `
+          <span style="background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">
+            📅 Target Date: ${m.target_date}${m.target_time ? ' at ' + m.target_time : ''}
+          </span>
+        ` : '';
+
+        const subjectPill = m.subject ? `
+          <span style="background: rgba(255,255,255,0.06); color: #f8fafc; border: 1px solid var(--card-border); padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 800;">
+            📚 ${m.subject}${m.session_type ? ' (' + m.session_type + ')' : ''}
+          </span>
+        ` : '';
+
+        const arabicTag = m.has_arabic ? `
+          <span style="background: rgba(16,185,129,0.15); color: #34d399; padding: 2px 6px; border-radius: 4px; font-size: 0.68rem; font-weight: 800;">ARABIC / DARIJA</span>
+        ` : '';
+
+        return `
+          <div style="background: #090e17; border: 1px solid var(--card-border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; transition: border-color 0.2s ease;">
+            
+            <!-- TOP BAR -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="background: ${badgeBg}; color: ${badgeColor}; padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 800; text-transform: uppercase;">
+                  ${m.category.replace('_', ' ')}
+                </span>
+                <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">
+                  #${m.id} in <b>${m.topic_name}</b>
+                </span>
+                <span style="font-size: 0.72rem; color: #64748b;">
+                  (${m.date_alg})
+                </span>
+                ${arabicTag}
+              </div>
+              <div>
+                ${validityBadge}
+              </div>
+            </div>
+
+            <!-- METADATA PILLS -->
+            ${(subjectPill || targetDatePill) ? `
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                ${subjectPill}
+                ${targetDatePill}
+              </div>
+            ` : ''}
+
+            <!-- RAW MESSAGE CONTENT (PERFECT NATIVE BIDI RTL / LTR) -->
+            <div dir="auto" style="unicode-bidi: plaintext; font-family: system-ui, -apple-system, 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 0.95rem; line-height: 1.6; color: #f1f5f9; background: #040711; border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; padding: 12px 14px; white-space: pre-wrap; word-break: break-word;">
+              ${m.raw_text}
+            </div>
+
+            <!-- FOOTER INFO / TRANSLITERATION -->
+            ${m.display_text && m.display_text !== m.raw_text ? `
+              <div style="font-size: 0.76rem; color: #38bdf8; background: rgba(56,189,248,0.06); padding: 6px 10px; border-radius: 6px; border-left: 3px solid #0284c7;">
+                💡 <b>Vocabulary Intel:</b> ${m.display_text.split('[Darija/Arabic:')[1]?.replace(']', '') || m.display_text}
+              </div>
+            ` : ''}
+
+            ${m.validity_note ? `
+              <div style="font-size: 0.72rem; color: #64748b;">
+                📌 <i>Note: ${m.validity_note}</i>
+              </div>
+            ` : ''}
+
+          </div>
+        `;
+      }).join('');
     }
 
     // 3. Load & Save Task State
@@ -2346,6 +2573,7 @@
     loadLiveData();
     loadTasksData();
     loadProfessorIntel();
+    refreshTelegramMemory();
     checkLiveMeetingStatus();
   </script>
 </body>

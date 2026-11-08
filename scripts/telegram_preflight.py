@@ -38,7 +38,10 @@ SUBJECT_ALIASES = {
 CANCEL_KEYWORDS = [
     "mat9rawch", "matqrawch", "makanesh", "makach", "makanx", "machi lyoum",
     "annulé", "annule", "annulee", "annulée", "annulation",
-    "pas de td", "pas de cours", "pas de seance", "pas de séance", "pas de classe",
+    "pas de td", "pas de cours", "pas cours", "aura pas cours", "n'y aura pas", "n’y aura pas",
+    "pas de seance", "pas de séance", "pas de classe",
+    "professeur est malade", "professeur e est malade", "professeure est malade", "prof malade", "malade",
+    "supprimé", "supprime", "supprimée",
     "m3ndhach cnx", "m3andhach cnx", "makach cnx", "probleme de connexion", "problème de connexion",
     "problème ta connexion", "probleme ta connexion", "cnx b sebat les travaux",
     "khayro nhar", "t3awd la seance", "t3awd la séance", "n3awdo fih", "y3awdhalna",
@@ -196,8 +199,15 @@ def run_telegram_preflight_check(meeting, config_file="config.json"):
         if meet_match:
             new_url = meet_match.group(0)
 
-        # Check cancellation
-        is_cancel = any(kw in txt_lower for kw in CANCEL_KEYWORDS)
+        # Check cancellation (guard against future dates like next week / 15/11)
+        is_future_date = any(w in txt_lower for w in ["semaine prochaine", "next week", "demain", "ghodwa"])
+        date_match = re.search(r'\(?(\d{1,2})[/.-](\d{1,2})\)?', txt_lower)
+        if date_match:
+            d, m = int(date_match.group(1)), int(date_match.group(2))
+            if d != today_alg.day or m != today_alg.month:
+                is_future_date = True
+
+        is_cancel = any(kw in txt_lower for kw in CANCEL_KEYWORDS) and not is_future_date
         if is_cancel:
             both = ("cours et td" in txt_lower or "cours w td" in txt_lower or
                     ("cours" in txt_lower and "td" in txt_lower) or

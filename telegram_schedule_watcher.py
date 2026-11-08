@@ -8,6 +8,14 @@ import requests
 import subprocess
 from datetime import datetime, timezone, timedelta
 from telethon import TelegramClient, events
+from message_memory import (
+    memory_manager,
+    format_text_for_display,
+    extract_explicit_or_relative_date,
+    extract_target_time,
+    match_canonical_subject,
+    classify_message_semantics
+)
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -546,43 +554,29 @@ def extract_text_from_image_gemini(image_bytes, caption=""):
 
 # ── n8n Gemini parser ──────────────────────────────────────────────────────────
 
-def parse_locally_fallback(message_text):
+def parse_locally_fallback(message_text, msg_date=None):
     """
-    Local NLP heuristic for Algerian university announcements (French + Darija).
+    Enhanced Multilingual Local NLP heuristic for Algerian university announcements (French + Darija).
+    Supports cancellations (including sick profs, 'aura pas cours'), rescheduling, and exam announcements.
     Activates when n8n parser times out or is unreachable.
     """
-    lower = message_text.lower()
-    cancel_keywords = [
-        "mat9rawch", "matqrawch", "makanesh", "makach", "makanx",
-        "annulé", "annule", "annulee", "annulée", "annulation",
-        "reporté", "reporte", "reportee", "reportée", "report",
-        "pas de td", "pas de cours", "pas de seance", "pas de séance",
-        "y3awdhalna", "n3awdoha", "déplacement", "deplacement"
-    ]
-    is_cancel = any(kw in lower for kw in cancel_keywords)
-    reschedule_keywords = ["bedlo", "badlo", "changement", "décalé", "decale", "tbadal", "tbadel"]
-    is_reschedule = any(kw in lower for kw in reschedule_keywords)
-
-    if not (is_cancel or is_reschedule):
-        return {"is_schedule_update": False}
+    msg_dt = msg_date or datetime.now()
+    category = classify_message_semantics(message_text)
+    found_subject = match_canonical_subject(message_text)
+    target_date = extract_explicit_or_relative_date(message_text, msg_dt)
+    target_time = extract_target_time(message_text)
 
     cfg = load_config()
-    now_dt = datetime.now()
-    today_name = DAYS[now_dt.weekday()]
-    found_subject = None
-
-    for alias, canon in SUBJECT_ALIASES.items():
-        if alias in lower:
-            found_subject = canon
-            break
+    today_name = DAYS[msg_dt.weekday()]
 
     if not found_subject:
+        lower = message_text.lower()
         is_td_msg = "td" in lower
         is_cours_msg = any(w in lower for w in ["cours", "cour", "cours magistral"])
         for m in cfg.get("meetings", []):
             if m.get("day_of_week", "").lower() == today_name:
-                s_dt, e_dt = _class_window(m, now_dt)
-                if s_dt - timedelta(minutes=60) <= now_dt <= e_dt + timedelta(minutes=30):
+                s_dt, e_dt = _class_window(m, msg_dt)
+                if s_dt - timedelta(minutes=60) <= msg_dt <= e_dt + timedelta(minutes=30):
                     base_name = re.sub(r'\s*\((?:c|td|tp|td/tp)\)', '', m.get("name", ""), flags=re.I).strip()
                     if is_td_msg and is_cours_msg:
                         found_subject = base_name
@@ -596,21 +590,25 @@ def parse_locally_fallback(message_text):
                     elif not found_subject:
                         found_subject = base_name
 
-    if not found_subject:
+    if not found_subject or category not in ("cancellation", "reschedule", "exam"):
         return {"is_schedule_update": False}
 
-    print(f" [LOCAL PARSER] Inferred active subject: '{found_subject}', cancelled={is_cancel}")
+    day_of_week_str = target_date.strftime("%A") if target_date else today_name.capitalize()
+
+    print(f" [LOCAL PARSER] Inferred active subject: '{found_subject}', category={category}, target_date={target_date}")
     return {
         "is_schedule_update": True,
         "subject": found_subject,
-        "day_of_week": today_name.capitalize(),
-        "time": None,
+        "category": category,
+        "day_of_week": day_of_week_str,
+        "target_date": target_date.strftime("%Y-%m-%d") if target_date else None,
+        "time": target_time,
         "meet_url": None,
-        "notes": message_text[:120]
+        "notes": message_text[:140]
     }
 
 
-def parse_with_n8n(message_text, retries=2):
+def parse_with_n8n(message_text, retries=2, msg_date=None):
     for attempt in range(retries):
         try:
             resp = requests.post(N8N_PARSER_URL, json={"message_text": message_text}, timeout=10)
@@ -625,7 +623,7 @@ def parse_with_n8n(message_text, retries=2):
             time.sleep(0.5)
 
     # Seamless fallback to local Darija/French NLP heuristic
-    return parse_locally_fallback(message_text)
+    return parse_locally_fallback(message_text, msg_date=msg_date)
 
 
 # ── Initial scan ───────────────────────────────────────────────────────────────
@@ -641,6 +639,8 @@ async def initial_scan(client, entity):
     meet_msgs = await client.get_messages(entity, reply_to=TOPIC_MEET, limit=50)
     # Process oldest first so latest URL wins
     for m in reversed(meet_msgs):
+        if m.date >= start_date and m.text:
+            memory_manager.record_message(m.id, m.date, TOPIC_MEET, m.text, getattr(m.from_id, 'user_id', None))
         if m.date >= start_date and m.text and "meet.google.com" in m.text:
             url_match = re.search(r'https?://meet\.google\.com/[a-z0-9\-]+', m.text)
             if url_match:
@@ -660,7 +660,8 @@ async def initial_scan(client, entity):
     imp_msgs = await client.get_messages(entity, reply_to=TOPIC_IMPORTANT, limit=40)
     for m in reversed(imp_msgs):
         if m.date >= start_date and m.text:
-            parsed = parse_with_n8n(m.text)
+            memory_manager.record_message(m.id, m.date, TOPIC_IMPORTANT, m.text, getattr(m.from_id, 'user_id', None))
+            parsed = parse_with_n8n(m.text, msg_date=m.date)
             if parsed.get("is_schedule_update") and parsed.get("subject") and parsed.get("subject") != "unknown":
                 day_raw = parsed.get("day_of_week")
                 time_raw = parsed.get("time")
@@ -678,6 +679,7 @@ async def initial_scan(client, entity):
     disc_msgs = await client.get_messages(entity, reply_to=TOPIC_DISCUSSION, limit=40)
     for m in reversed(disc_msgs):
         if m.date >= start_date and m.text:
+            memory_manager.record_message(m.id, m.date, TOPIC_DISCUSSION, m.text, getattr(m.from_id, 'user_id', None))
             has_meet = "meet.google.com" in m.text
             has_reschedule = any(kw in m.text.lower() for kw in [
                 "reporté", "reporte", "annulé", "annule", "bedlo", "changement", "décalé", "pas de"
@@ -815,8 +817,18 @@ async def main():
                     "changement", "décalé", "pas de", "makanesh"
                 ])
 
+                # Immediately preserve every incoming message in persistent memory
+                mem_entry = memory_manager.record_message(
+                    msg_id=m.id,
+                    msg_date=m.date,
+                    topic_id=topic_id,
+                    raw_text=text,
+                    sender_id=getattr(m.from_id, 'user_id', None)
+                )
+
                 if topic_id in [TOPIC_MEET, TOPIC_IMPORTANT] or (topic_id == TOPIC_DISCUSSION and (has_meet or has_keywords)) or is_photo:
-                    print(f"\n[LIVE] [{m.date.date()}] (Topic {topic_id}): {text[:100]}")
+                    disp_str = format_text_for_display(text[:120])
+                    print(f"\n[LIVE] [{m.date.date()}] (Topic {topic_id}): {disp_str}")
 
                     if topic_id == TOPIC_MEET and has_meet:
                         # URL-only update from meet channel
@@ -826,7 +838,7 @@ async def main():
                             sub = lines[0].replace("Lien", "").strip(" :")
                             update_meeting_url(sub, url_match.group(0), raw_text=text)
                     else:
-                        parsed = parse_with_n8n(text)
+                        parsed = parse_with_n8n(text, msg_date=m.date)
                         if parsed.get("is_schedule_update"):
                             subj = parsed.get("subject")
                             if not subj or subj == "unknown":

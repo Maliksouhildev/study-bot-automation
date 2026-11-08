@@ -40,6 +40,8 @@ class StudyHubHandler(SimpleHTTPRequestHandler):
             self.handle_api_tasks()
         elif parsed.path == "/api/professor-intel":
             self.handle_api_professor_intel()
+        elif parsed.path == "/api/telegram-memory":
+            self.handle_api_telegram_memory()
         else:
             super().do_GET()
 
@@ -255,6 +257,19 @@ class StudyHubHandler(SimpleHTTPRequestHandler):
                 except Exception:
                     pass
         self._send_json({"intel": intel_items})
+
+    def handle_api_telegram_memory(self):
+        """Returns all Telegram messages captured in persistent memory with date and validity metadata."""
+        memory_path = os.path.join(STUDY_BOT_DIR, "messages_memory.json")
+        if os.path.exists(memory_path):
+            try:
+                with open(memory_path, "r", encoding="utf-8-sig") as f:
+                    data = json.load(f)
+                self._send_json(data)
+                return
+            except Exception:
+                pass
+        self._send_json({"messages": [], "total_messages": 0})
 
     def handle_api_jarvis_chat(self):
         """Conversational AI task strategist and Jarvis advisor."""
