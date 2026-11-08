@@ -156,6 +156,115 @@ class DualAudioRecorder:
         sf.write(self.output_wav, final_audio, self.samplerate)
         print(f"[Audio] Saved {len(final_audio)/self.samplerate:.1f}s of normalized audio to {self.output_wav}")
 
+# Scheduling globals (DAYS, _launched, _launch_lock, _class_window) defined above join_meeting
+
+def extract_meet_code(url):
+    """Extract standard 10-char Google Meet room code (e.g. joq-kgbf-mki)."""
+    if not url:
+        return ""
+    m = re.search(r'([a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{3})', url.lower())
+    if m:
+        return m.group(1)
+    return url.split("/")[-1].split("?")[0].strip().lower()
+
+def clean_prof_name(prof_str):
+    """Normalize professor name by stripping honorifics and titles."""
+    if not prof_str:
+        return ""
+    cleaned = re.sub(r'^(pr|dr|prof|mme|mr|m)\.?\s+', '', prof_str.strip(), flags=re.IGNORECASE)
+    return cleaned.strip().lower()
+
+def professor_matches(prof_config_str, participant_name):
+    """Fuzzy check if participant name in Meet DOM corresponds to professor."""
+    if not prof_config_str or not participant_name:
+        return False
+    cfg_clean = clean_prof_name(prof_config_str)
+    part_clean = participant_name.strip().lower()
+    if not cfg_clean:
+        return False
+    if cfg_clean in part_clean:
+        return True
+    parts = [p for p in re.split(r'[\s\-_]+', cfg_clean) if len(p) >= 3]
+    return any(p in part_clean for p in parts)
+
+def find_consecutive_meeting(current_meeting, config, ref_datetime=None):
+    """
+    Check if another scheduled class today immediately follows current_meeting
+    with the same professor, same Meet link, or same subject base name.
+    """
+    ref_datetime = ref_datetime or datetime.now()
+    today_name = DAYS[ref_datetime.weekday()]
+    today_str = ref_datetime.strftime("%Y-%m-%d")
+    curr_start, curr_end = _class_window(current_meeting, ref_datetime)
+    curr_code = extract_meet_code(current_meeting.get("url", ""))
+    curr_prof = clean_prof_name(current_meeting.get("professor", ""))
+    curr_base = re.sub(r'\(.*?\)', '', current_meeting["name"]).strip().lower()
+
+    for m in config.get("meetings", []):
+        if m["name"].lower() == current_meeting["name"].lower():
+            continue
+        if m.get("day_of_week", "").lower() != today_name:
+            continue
+        if today_str in m.get("cancelled_dates", []):
+            continue
+
+        cand_start, cand_end = _class_window(m, ref_datetime)
+        time_diff_min = (cand_start - curr_end).total_seconds() / 60.0
+        # Contiguous in time: starts within [-15, +25] minutes of current class end
+        if not (-15 <= time_diff_min <= 25):
+            continue
+
+        cand_code = extract_meet_code(m.get("url", ""))
+        cand_prof = clean_prof_name(m.get("professor", ""))
+        cand_base = re.sub(r'\(.*?\)', '', m["name"]).strip().lower()
+
+        is_same_code = bool(curr_code and cand_code and curr_code == cand_code)
+        is_same_prof = bool(curr_prof and cand_prof and (curr_prof in cand_prof or cand_prof in curr_prof))
+        is_same_subject = bool(curr_base and cand_base and curr_base == cand_base)
+
+        if is_same_code or is_same_prof or is_same_subject:
+            return m, cand_start, cand_end
+
+    return None
+
+def find_next_different_class(current_meeting, config, ref_datetime=None):
+    """
+    Find upcoming class scheduled today with a DIFFERENT professor / room code.
+    Used to ensure the bot leaves an overtime call in time to switch rooms.
+    """
+    ref_datetime = ref_datetime or datetime.now()
+    today_name = DAYS[ref_datetime.weekday()]
+    today_str = ref_datetime.strftime("%Y-%m-%d")
+    curr_code = extract_meet_code(current_meeting.get("url", ""))
+    curr_prof = clean_prof_name(current_meeting.get("professor", ""))
+
+    upcoming = []
+    for m in config.get("meetings", []):
+        if m["name"].lower() == current_meeting["name"].lower():
+            continue
+        if m.get("day_of_week", "").lower() != today_name:
+            continue
+        if today_str in m.get("cancelled_dates", []):
+            continue
+
+        cand_start, cand_end = _class_window(m, ref_datetime)
+        if cand_start <= ref_datetime:
+            continue
+
+        cand_code = extract_meet_code(m.get("url", ""))
+        cand_prof = clean_prof_name(m.get("professor", ""))
+
+        is_same_code = bool(curr_code and cand_code and curr_code == cand_code)
+        is_same_prof = bool(curr_prof and cand_prof and (curr_prof in cand_prof or cand_prof in curr_prof))
+
+        if not (is_same_code or is_same_prof):
+            upcoming.append((cand_start, m, cand_end))
+
+    if upcoming:
+        upcoming.sort(key=lambda x: x[0])
+        return upcoming[0][1], upcoming[0][0], upcoming[0][2]
+    return None
+
 def join_meeting(meeting, skip_delay=False, class_end=None):
     current_config = load_config()
     if current_config.get("enabled", True) is not True:
@@ -363,6 +472,15 @@ def join_meeting(meeting, skip_delay=False, class_end=None):
         unique_participants = set()
         low_count_consecutive = 0
 
+        # Intelligent session chaining & professor tracking state
+        active_meeting = meeting
+        chained_sessions = [meeting["name"]]
+        target_prof = (meeting.get("professor") or "").strip()
+        prof_seen = False
+        prof_missing_consecutive = 0
+        initial_class_start = datetime.now()
+        current_class_end = class_end
+
         while True:
             elapsed_minutes = (time.time() - meeting_start_time) / 60
             
@@ -404,10 +522,23 @@ def join_meeting(meeting, skip_delay=False, class_end=None):
                             current_count = max(current_count, panel_count)
                             try:
                                 names = page.locator("div[role='listitem'] span").all_inner_texts()
+                                current_scrape_names = []
                                 for n in names:
                                     cleaned = n.strip()
                                     if len(cleaned) > 2 and not cleaned.isdigit() and "présentation" not in cleaned.lower() and "presentation" not in cleaned.lower():
                                         unique_participants.add(cleaned)
+                                        current_scrape_names.append(cleaned)
+                                
+                                # Track professor presence in current DOM
+                                if target_prof:
+                                    prof_present = any(professor_matches(target_prof, n) for n in current_scrape_names)
+                                    if prof_present:
+                                        if not prof_seen:
+                                            print(f"[{datetime.now()}] 👨‍🏫 Professor '{target_prof}' confirmed present in meeting.")
+                                        prof_seen = True
+                                        prof_missing_consecutive = 0
+                                    elif prof_seen and (panel_count >= current_count or current_count <= 8):
+                                        prof_missing_consecutive += 1
                             except Exception:
                                 pass
                 except Exception:
@@ -460,14 +591,67 @@ def join_meeting(meeting, skip_delay=False, class_end=None):
                     pass
                 break
 
-            # Scheduled class end reached (next class may need the Chrome profile)
-            if class_end and datetime.now() >= class_end:
-                print(f"[{datetime.now()}] ⏰ Scheduled class end reached. Leaving call.")
-                break
+            # ── Intelligent Session Continuation & Smart Overtime Logic ───
+            now = datetime.now()
+            if current_class_end and now >= current_class_end:
+                # 1. Check for immediate consecutive session (same prof / same meet URL / same subject)
+                cfg = load_config()
+                consecutive = find_consecutive_meeting(active_meeting, cfg, now)
+                if consecutive:
+                    next_m, next_start, next_end = consecutive
+                    next_key = (next_m["name"].lower(), now.date())
+                    if next_m["name"] not in chained_sessions:
+                        with _launch_lock:
+                            _launched.add(next_key)  # Prevent scheduler from starting duplicate thread
+                        chained_sessions.append(next_m["name"])
+                        print(f"\n{'='*65}")
+                        print(f"[{datetime.now()}] 🔗 CONSECUTIVE SESSION DETECTED: '{next_m['name']}'")
+                        print(f"[{datetime.now()}] Seamlessly chaining session with Prof: {next_m.get('professor', 'N/A')}")
+                        print(f"[{datetime.now()}] Remaining in active Google Meet call without disconnecting!")
+                        print(f"[{datetime.now()}] Extended session window until {next_end.strftime('%H:%M')}.")
+                        print(f"{'='*65}\n")
+                        current_class_end = next_end
+                        active_meeting = next_m
+                        if next_m.get("professor"):
+                            target_prof = next_m["professor"].strip()
+                        continue
 
-            # Hard Max: 105 minutes (90 min normal class + 15 min buffer)
-            if elapsed_minutes >= 105:
-                print(f"[{datetime.now()}] ⏰ Max duration reached (105 minutes). Leaving call.")
+                # 2. No consecutive session: Check if a DIFFERENT class is upcoming today
+                next_diff = find_next_different_class(active_meeting, cfg, now)
+                if next_diff:
+                    diff_m, diff_start, diff_end = next_diff
+                    # Leave 3 minutes before next class so Chrome profile & audio are released
+                    if now >= diff_start - timedelta(minutes=3):
+                        print(f"[{datetime.now()}] 🚪 Smart Exit: Upcoming class '{diff_m['name']}' with Prof: {diff_m.get('professor', 'N/A')} starts at {diff_m['time']}. Leaving current call to switch rooms.")
+                        break
+
+                # 3. Check if professor has left the call (missing for >= 3 checks after being seen)
+                if prof_seen and prof_missing_consecutive >= 3:
+                    print(f"[{datetime.now()}] 🚪 Smart Exit: Professor '{target_prof}' has left the call. Class concluded.")
+                    break
+
+                # 4. Check if participants have drastically declined
+                if current_count <= 2:
+                    print(f"[{datetime.now()}] 🚪 Smart Exit: Class ended and participants dropped to {current_count}. Leaving meeting.")
+                    break
+                if peak_participants >= 6 and current_count < peak_participants * 0.30:
+                    print(f"[{datetime.now()}] 🚪 Smart Exit: Class ended and audience drastically declined ({current_count}/{peak_participants} left). Leaving meeting.")
+                    break
+
+                # 5. Overtime buffer cap: max 35 minutes past scheduled end
+                if now >= current_class_end + timedelta(minutes=35):
+                    print(f"[{datetime.now()}] ⏰ Max overtime buffer (+35m past {current_class_end.strftime('%H:%M')}) reached. Leaving call.")
+                    break
+
+                # 6. If none of the above, professor and students are still in call: continue recording!
+                overtime_min = int((now - current_class_end).total_seconds() // 60)
+                if overtime_min > 0 and int(time.time() - meeting_start_time) % 60 < 20:
+                    print(f"[{datetime.now()}] ⏳ Overtime active (+{overtime_min}m): Professor/students still in call ({current_count} present). Continuing recording...")
+
+            # Hard Max: total scheduled minutes + 40 min buffer
+            total_sched_min = int((current_class_end - initial_class_start).total_seconds() // 60) if current_class_end else 90
+            if elapsed_minutes >= total_sched_min + 40:
+                print(f"[{datetime.now()}] ⏰ Absolute max duration reached ({elapsed_minutes:.0f} minutes). Leaving call.")
                 break
 
             time.sleep(20)
@@ -504,8 +688,9 @@ def join_meeting(meeting, skip_delay=False, class_end=None):
                 if is_new_csv:
                     f.write("Date,Subject,StartTime,EndTime,DurationMin,PeakStudents,Attendees\n")
                 attendees_str = "; ".join(sorted(list(unique_participants))).replace(",", " ")
-                f.write(f"{datetime.now().strftime('%Y-%m-%d')},{meeting['name']},{start_time_str},{end_time_str},{total_duration_minutes},{peak_participants},\"{attendees_str}\"\n")
-            print(f"[OK] Attendance saved to {attendance_file} (Peak: {peak_participants} students)")
+                for s_name in chained_sessions:
+                    f.write(f"{datetime.now().strftime('%Y-%m-%d')},{s_name},{start_time_str},{end_time_str},{total_duration_minutes},{peak_participants},\"{attendees_str}\"\n")
+            print(f"[OK] Attendance saved for {len(chained_sessions)} session(s): {', '.join(chained_sessions)} (Peak: {peak_participants} students)")
         except Exception as e:
             print(f"Warning saving attendance CSV: {e}")
 
@@ -537,8 +722,10 @@ def join_meeting(meeting, skip_delay=False, class_end=None):
         print(f"[{datetime.now()}] Uploading to n8n AI webhook...")
         try:
             webhook_url = current_config["settings"]["n8n_webhook_url"]
+            combined_name = " & ".join(chained_sessions)
             data_payload = {
-                "meeting_name": meeting["name"],
+                "meeting_name": combined_name,
+                "chained_sessions": json.dumps(chained_sessions),
                 "video_path": os.path.abspath(video_filename),
                 "timestamp": timestamp,
                 "start_time": start_time_str,
