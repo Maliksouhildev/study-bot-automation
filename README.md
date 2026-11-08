@@ -30,13 +30,13 @@ Online university lectures frequently suffer from last-minute schedule changes, 
 
 ---
 
-## 🖥️ System Flow & Dashboard Interface
+## 🖥️ Live Timetable & Study Dashboard Interface
 
 <div align="center">
 
-![Study Bot Meeting Session](docs/images/meeting_recorder_screen.png)
+![Study Bot Dashboard UI](docs/images/study_bot_dashboard.jpg)
 
-*Study Bot Active Meeting Screen: Automated Playwright session joined to lecture room with camera/mic muted, screen audio capture active, and real-time buffer sync.*
+*Study Bot Autonomous Control Center: Real-time academic timetable (L3 Automatique / EAD3), live Google Meet session detection banner, Jarvis Mission Control task rollover monitor, and automated class recording indicators.*
 
 </div>
 
