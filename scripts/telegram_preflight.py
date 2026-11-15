@@ -51,24 +51,27 @@ CANCEL_KEYWORDS = [
 
 def load_config(config_file="config.json"):
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    target_path = os.path.join(base_dir, config_file) if not os.path.isabs(config_file) else config_file
-    if not os.path.exists(target_path):
-        ex_path = os.path.join(base_dir, "config.example.json")
-        if os.path.exists(ex_path):
+    root_dir = os.path.dirname(base_dir)
+    for candidate in [
+        config_file if os.path.isabs(config_file) else None,
+        os.path.join(root_dir, config_file),
+        os.path.join(base_dir, config_file)
+    ]:
+        if candidate and os.path.exists(candidate):
             try:
-                shutil.copy(ex_path, target_path)
+                with open(candidate, "r", encoding="utf-8-sig") as f:
+                    return json.load(f)
             except Exception:
                 pass
-    try:
-        with open(target_path, "r", encoding="utf-8-sig") as f:
-            return json.load(f)
-    except Exception:
-        return {}
+    return {}
 
 
 def save_config(config, config_file="config.json"):
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    root_dir = os.path.dirname(base_dir)
+    target_path = config_file if os.path.isabs(config_file) else os.path.join(root_dir, config_file)
     try:
-        with open(config_file, "w", encoding="utf-8") as f:
+        with open(target_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
         return True
     except Exception as e:
@@ -90,7 +93,51 @@ def run_telegram_preflight_check(meeting, config_file="config.json"):
         }
     """
     base_dir = os.path.dirname(os.path.abspath(__file__))
+    root_dir = os.path.dirname(base_dir)
+
+    now_alg = datetime.now(ALG_TZ)
+    today_alg = now_alg.date()
+    today_str = today_alg.strftime("%Y-%m-%d")
+
+    m_name = meeting["name"]
+    m_name_lower = m_name.lower()
+    is_td = "(td" in m_name_lower or " td" in m_name_lower
+    is_cours = "(c)" in m_name_lower or " cours" in m_name_lower
+    prof = meeting.get("professor", "").lower()
+
+    canonical = None
+    for subj, aliases in SUBJECT_ALIASES.items():
+        if subj.lower() in m_name_lower or any(a in m_name_lower for a in aliases):
+            canonical = subj
+            break
+
+    # 1. Fast Check against persistent messages_memory.json (catches announcements from previous days)
+    for mem_candidate in [os.path.join(root_dir, "messages_memory.json"), os.path.join(base_dir, "messages_memory.json")]:
+        if os.path.exists(mem_candidate):
+            try:
+                with open(mem_candidate, "r", encoding="utf-8-sig") as f:
+                    mem_data = json.load(f)
+                for mem_msg in mem_data.get("messages", []):
+                    m_subj = mem_msg.get("subject")
+                    m_target_d = mem_msg.get("target_date")
+                    m_cat = mem_msg.get("category")
+                    raw_lower = (mem_msg.get("raw_text") or "").lower()
+
+                    if canonical and m_subj and (canonical.lower() in m_subj.lower() or m_subj.lower() in canonical.lower()):
+                        if m_target_d == today_str or (not m_target_d and mem_msg.get("date_alg", "").startswith(today_str)):
+                            # Check micro-interro during TD
+                            is_exam_kw = any(k in raw_lower for k in ["micro intero", "micro-intero", "micro interro", "micro-interro", "micro-interrogation", "micro interrogation", "intero", "interro", "exam", "quiz", "fard", "imti7an"])
+                            is_td_target = is_td and (mem_msg.get("session_type") == "TD" or "td" in raw_lower or "seance de td" in raw_lower or "séance de td" in raw_lower or "pendant la seance de td" in raw_lower)
+                            if (m_cat == "exam" or is_exam_kw) and is_td_target:
+                                print(f"[{now_alg.strftime('%H:%M:%S')}] [PRE-FLIGHT] 🚫 Detected scheduled micro-interrogation during TD for {m_name} from memory #{mem_msg.get('id')}.")
+                                return {"action": "CANCEL", "reason": f"Micro-interrogation during TD: {mem_msg.get('raw_text', '')[:100]}"}
+            except Exception as e:
+                print(f"[PRE-FLIGHT] Memory pre-check warning: {e}")
+            break
+
     session_src = os.path.join(base_dir, f"{SESSION_NAME}.session")
+    if not os.path.exists(session_src):
+        session_src = os.path.join(root_dir, f"{SESSION_NAME}.session")
     if not os.path.exists(session_src):
         print(f"[PRE-FLIGHT] Notice: {SESSION_NAME}.session not found, skipping Telegram check.")
         return {"action": "PROCEED"}
@@ -208,7 +255,18 @@ def run_telegram_preflight_check(meeting, config_file="config.json"):
                 is_future_date = True
 
         is_cancel = any(kw in txt_lower for kw in CANCEL_KEYWORDS) and not is_future_date
-        if is_cancel:
+        # Check for Micro-Interrogation / Exam during TD (User rule: if micro-interro during TD, skip TD)
+        is_exam_td = is_td and any(k in txt_lower for k in [
+            "micro-interrogation", "micro interrogation", "micro interogation", "micro-interogation",
+            "micro-interro", "micro interro", "micro-intero", "micro intero", "interrogation",
+            "interro", "intero", "examen", "controle", "control", "quiz", "test", "fard", "imti7an"
+        ]) and not is_future_date
+
+        if is_exam_td:
+            cancelled = True
+            cancel_reason = f"Micro-interrogation scheduled during TD: {text}"
+            cancel_scope = "single"
+        elif is_cancel:
             both = ("cours et td" in txt_lower or "cours w td" in txt_lower or
                     ("cours" in txt_lower and "td" in txt_lower) or
                     "m3ndhach cnx" in txt_lower or "probleme de connexion" in txt_lower or

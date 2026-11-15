@@ -259,9 +259,10 @@ def classify_message_semantics(text, topic_id=None):
 
     # 2. Exam / Interrogation / Devoir
     exam_keywords = [
-        "micro-interrogation", "micro interrogation", "interrogation", "interro",
-        "examen", "controle", "control", "ctrl", "devoir", "test", "quiz",
-        "qcm", "evaluation", "imti7an", "fard", "micro-interro"
+        "micro-interrogation", "micro interrogation", "micro interogation", "micro-interogation",
+        "interrogation", "interogation", "micro-interro", "micro interro", "micro-intero", "micro intero",
+        "interro", "intero", "examen", "controle", "control", "ctrl", "devoir", "test", "quiz",
+        "qcm", "evaluation", "imti7an", "fard"
     ]
     if any(k in norm for k in exam_keywords):
         return "exam"
@@ -471,7 +472,7 @@ class MessageMemoryManager:
                 priority="high" if target_date == datetime.now(ALG_TZ).strftime("%Y-%m-%d") else "medium"
             )
 
-        # 2. Propagate EXAMS / QUIZZES to dashboard tasks_data.json
+        # 2. Propagate EXAMS / QUIZZES to dashboard tasks_data.json & auto-skip TD if scheduled during TD
         elif category == "exam" and subject:
             due = target_date or datetime.now(ALG_TZ).strftime("%Y-%m-%d")
             time_part = f" at {target_time}" if target_time else ""
@@ -482,6 +483,21 @@ class MessageMemoryManager:
                 due_date=due,
                 priority="high"
             )
+            # User mandate: When a micro-interro / exam is during a TD, skip that TD lesson
+            lower_raw = raw_text.lower()
+            is_during_td = (
+                entry.get("session_type") == "TD" or
+                "pendant la seance de td" in lower_raw or
+                "pendant la séance de td" in lower_raw or
+                "seance de td" in lower_raw or
+                "séance de td" in lower_raw or
+                "f td" in lower_raw or
+                "fl td" in lower_raw or
+                re.search(r'\btd\b', lower_raw) is not None
+            )
+            if is_during_td and due:
+                self._apply_cancellation_to_config(subject, due, session_type="TD")
+                print(f"[MEMORY SYNC] 🚫 Auto-skipping TD session for {subject} on {due} due to scheduled micro-interrogation.")
 
         # 3. Propagate MEET URLS to config.json
         elif category == "meet_link" and subject and entry.get("meet_url"):

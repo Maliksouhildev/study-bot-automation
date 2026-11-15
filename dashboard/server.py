@@ -72,6 +72,8 @@ class StudyHubHandler(SimpleHTTPRequestHandler):
             self.handle_api_exit_meeting()
         elif parsed.path == "/api/meeting/focus":
             self.handle_api_focus_meeting()
+        elif parsed.path == "/api/meeting/join":
+            self.handle_api_join_meeting()
         else:
             self.send_error(404, "Not Found")
 
@@ -455,6 +457,41 @@ class StudyHubHandler(SimpleHTTPRequestHandler):
 
             EnumWindows(EnumWindowsProc(cb), 0)
             self._send_json({"success": True, "activated": activated, "message": "Brought Google Meet window to front."})
+        except Exception as e:
+            self._send_json({"success": False, "error": str(e)}, status=500)
+
+    def handle_api_join_meeting(self):
+        """Launches the study bot to join a specified meeting or the current active meeting."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length).decode('utf-8') if content_length > 0 else "{}"
+            payload = json.loads(body) if body else {}
+
+            # Clear any stale exit signal
+            signal_path = os.path.join(STUDY_BOT_DIR, "exit_meeting.signal")
+            if os.path.exists(signal_path):
+                try:
+                    os.remove(signal_path)
+                except Exception:
+                    pass
+
+            # Clear stale lockfile if not actively locked
+            lock_path = os.path.join(STUDY_BOT_DIR, "chrome_bot_profile", "lockfile")
+            if os.path.exists(lock_path):
+                try:
+                    os.remove(lock_path)
+                except Exception:
+                    pass
+
+            # Spawn bot.py using the exact python interpreter with playwright
+            python_exe = r"C:\Users\mlkme\AppData\Local\Python\pythoncore-3.14-64\python.exe"
+            if not os.path.exists(python_exe):
+                python_exe = sys.executable
+
+            bot_script = os.path.join(STUDY_BOT_DIR, "bot.py")
+            subprocess.Popen([python_exe, "-u", bot_script], cwd=STUDY_BOT_DIR)
+
+            self._send_json({"success": True, "message": "Study bot launched! Connecting to session..."})
         except Exception as e:
             self._send_json({"success": False, "error": str(e)}, status=500)
 

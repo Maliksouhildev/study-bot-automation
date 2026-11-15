@@ -715,6 +715,26 @@
       box-shadow: 0 0 10px rgba(220, 38, 38, 0.4);
     }
     .btn-live-exit:hover { background: #991b1b; transform: translateY(-1px); }
+
+    .viewer-actions-row {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .btn-copy-meet {
+      background: #1e293b !important; color: #94a3b8 !important; border: 1px solid #334155 !important;
+      padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer;
+      display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+    }
+    .btn-copy-meet:hover { background: #334155 !important; color: #fff !important; }
+
+    .live-meeting-bar.standby-mode {
+      border-color: rgba(148, 163, 184, 0.3) !important;
+      box-shadow: 0 0 14px rgba(15, 23, 42, 0.4) !important;
+      animation: none !important;
+    }
+    .live-meeting-bar.standby-mode .live-pulse-dot {
+      background: #06b6d4 !important; box-shadow: 0 0 8px #06b6d4 !important; animation: none !important;
+    }
   </style>
 </head>
 <body>
@@ -752,24 +772,27 @@
     <div id="viewTimetable" style="display: flex; flex-direction: column; gap: 24px;">
 
       <!-- LIVE ACTIVE SESSION CONTROL BANNER -->
-      <div id="liveMeetingBar" class="live-meeting-bar" style="display: none;">
+      <div id="liveMeetingBar" class="live-meeting-bar">
         <div class="live-status-info">
-          <div class="live-pulse-dot"></div>
+          <div class="live-pulse-dot" id="livePulseDot"></div>
           <div>
             <div style="font-weight: 800; color: #fff; font-size: 0.96rem; display: flex; align-items: center; gap: 8px;">
-              <span>🔴 LIVE SESSION RUNNING:</span>
+              <span id="liveStatusPrefix">🔴 LIVE SESSION RUNNING:</span>
               <span id="liveMeetingName" style="color: var(--cyan);">Loading class...</span>
             </div>
             <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 2px;">
               Prof. <span id="liveMeetingProf" style="color: #fff; font-weight: 700;">--</span> •
               Time: <span id="liveMeetingTime" style="font-family: 'JetBrains Mono', monospace; color: var(--cyan);">--</span> •
-              <span style="color: var(--emerald);">Bot is actively connected</span>
+              <span id="liveBotStatusText" style="color: var(--emerald);">Bot is actively connected</span>
             </div>
           </div>
         </div>
         <div class="live-meeting-actions">
           <button class="btn-live-attend" onclick="attendLiveMeeting()" title="Opens Google Meet in your personal browser so you can speak or turn on mic">
             <span>🗣️</span> Join Personally (To Speak)
+          </button>
+          <button class="btn-live-focus" onclick="joinActiveOrSelectedSessionBot()" title="Launch or reconnect the automated Study Bot to this session">
+            <span>🤖</span> Launch Bot
           </button>
           <button class="btn-live-focus" onclick="focusBotChromeWindow()" title="Brings the bot's automated Chrome window to the front of your desktop">
             <span>🪟</span> View Bot's Window
@@ -825,6 +848,20 @@
             </div>
           </div>
           <div class="prof-contact-bar" id="vContactBar"></div>
+          <div class="viewer-actions-row" id="vActionToolbar">
+            <button class="btn-live-attend" onclick="joinActiveOrSelectedSessionPersonal()" title="Open Google Meet in your browser so you can speak or turn on mic">
+              <span>🗣️</span> Join Session Personally
+            </button>
+            <button class="btn-live-focus" onclick="joinActiveOrSelectedSessionBot()" title="Launch the automated Study Bot to record & transcribe this session">
+              <span>🤖</span> Launch Bot &amp; Join
+            </button>
+            <button class="btn-live-exit" onclick="exitLiveMeeting()" title="Instruct the Study Bot to leave the Google Meet call immediately">
+              <span>🛑</span> Exit Meeting Now
+            </button>
+            <button class="btn-copy-meet" onclick="copyActiveOrSelectedMeetUrl()" title="Copy Google Meet Link">
+              <span>📋</span> Copy Meet Link
+            </button>
+          </div>
         </div>
 
         <!-- RECORDING AUDIT BANNER -->
@@ -1250,7 +1287,7 @@
       "Tuesday_0930": { name: "Embedded Computer 1 (C)", prof: "MERABTI", type: "C", css: "course-embedded", meet: "https://meet.google.com/odi-yqwz-irp", hasRec: true },
       "Tuesday_1100": { name: "Embedded Computer 1 (Tutorial)", prof: "MERABTI", type: "TD", css: "course-embedded", meet: "https://meet.google.com/odi-yqwz-irp", hasRec: false, recIssue: "Professor skipped TD break; session merged." },
       "Tuesday_1300": { name: "Control Systems 2 (Tutorial)", prof: "GHERBI", type: "TD", css: "course-control", meet: "https://meet.google.com/csb-hbbq-nok", hasRec: true },
-      "Tuesday_1430": { name: "Electrical Machines and Drives (C)", prof: "CHELLI", type: "C", css: "course-machines", meet: "https://meet.google.com/pux-yiek-dcj", hasRec: true },
+      "Tuesday_1430": { name: "Electrical Machines and Drives (C)", prof: "CHELLI", type: "C", css: "course-machines", meet: "https://meet.google.com/qxt-mcpv-vjh", hasRec: true },
 
       // Thursday
       "Thursday_0800": { name: "Industrial Programmable Automation 1 (C)", prof: "RIGHI", type: "C", css: "course-api", meet: "https://meet.google.com/pti-nsoj-hui", hasRec: false, recIssue: "Upcoming lecture slot." },
@@ -1526,6 +1563,7 @@
     // ═════════════════════════════════════════════════════════════════
     function selectSession(s, currItem) {
       activeSession = s;
+      selectedViewerMeeting = { name: s.course_name, url: s.meet, prof: s.professor };
       selectedModuleFilter = s.module_canonical;
       document.getElementById("tabModule").innerText = s.module_canonical;
 
@@ -1603,6 +1641,7 @@
     }
 
     function showPlaceholder(item, day, slot) {
+      selectedViewerMeeting = { name: item.name, url: item.meet, prof: item.prof };
       document.getElementById("vTag").innerText = "Scheduled Timetable Slot";
       document.getElementById("vTitle").innerText = item.name;
 
@@ -1777,6 +1816,19 @@
               else if (canon.includes("Robotique")) prof = "RAMDANI";
               else if (canon.includes("Automation") || canon.includes("Programmable")) prof = "RIGHI";
 
+              let meetUrl = "https://meet.google.com/";
+              if (data.config && Array.isArray(data.config.meetings)) {
+                const foundM = data.config.meetings.find(m => m.name && (m.name.toLowerCase().includes(canon.toLowerCase()) || canon.toLowerCase().includes(m.name.toLowerCase())));
+                if (foundM && foundM.url) meetUrl = foundM.url;
+              }
+              if (meetUrl === "https://meet.google.com/") {
+                for (const [k, cItem] of Object.entries(CURRICULUM)) {
+                  if (cItem.name && (cItem.name.toLowerCase().includes(canon.toLowerCase()) || canon.toLowerCase().includes(cItem.name.toLowerCase()))) {
+                    if (cItem.meet) { meetUrl = cItem.meet; break; }
+                  }
+                }
+              }
+
               return {
                 id: `rec-${rep.date}-${idx}`,
                 course_name: rep.course_name,
@@ -1785,7 +1837,7 @@
                 time: "Class Session",
                 duration: hasTranscript ? `${Math.max(45, Math.round(rep.transcript.length / 400))} min` : "84 min",
                 professor: prof,
-                meet: "https://meet.google.com/",
+                meet: meetUrl,
                 hasRec: true,
                 switches: {
                   malikCalled: isMalikCalled,
@@ -2561,6 +2613,21 @@
 
     // 9. Live Meeting Interactive Management
     let currentLiveMeeting = null;
+    let selectedViewerMeeting = null;
+
+    function getBestMeetUrl() {
+      if (currentLiveMeeting && currentLiveMeeting.url) return currentLiveMeeting.url;
+      if (selectedViewerMeeting && selectedViewerMeeting.url) return selectedViewerMeeting.url;
+      if (activeSession && activeSession.meet) return activeSession.meet;
+      return "https://meet.google.com/";
+    }
+
+    function getBestSessionName() {
+      if (currentLiveMeeting && currentLiveMeeting.name) return currentLiveMeeting.name;
+      if (selectedViewerMeeting && selectedViewerMeeting.name) return selectedViewerMeeting.name;
+      if (activeSession && activeSession.course_name) return activeSession.course_name;
+      return "Current Session";
+    }
 
     async function checkLiveMeetingStatus() {
       try {
@@ -2570,13 +2637,37 @@
           currentLiveMeeting = data.active_meeting;
           const bar = document.getElementById("liveMeetingBar");
           if (bar) {
+            bar.style.display = "flex";
             if (currentLiveMeeting) {
-              bar.style.display = "flex";
-              document.getElementById("liveMeetingName").innerText = currentLiveMeeting.name;
-              document.getElementById("liveMeetingProf").innerText = currentLiveMeeting.professor || "Faculty";
-              document.getElementById("liveMeetingTime").innerText = currentLiveMeeting.time;
+              bar.classList.remove("standby-mode");
+              const pfx = document.getElementById("liveStatusPrefix");
+              if (pfx) pfx.innerText = "🔴 LIVE SESSION RUNNING:";
+              const mName = document.getElementById("liveMeetingName");
+              if (mName) mName.innerText = currentLiveMeeting.name;
+              const mProf = document.getElementById("liveMeetingProf");
+              if (mProf) mProf.innerText = currentLiveMeeting.professor || "Faculty";
+              const mTime = document.getElementById("liveMeetingTime");
+              if (mTime) mTime.innerText = currentLiveMeeting.time;
+              const bStat = document.getElementById("liveBotStatusText");
+              if (bStat) {
+                bStat.innerText = "Bot is actively connected";
+                bStat.style.color = "var(--emerald)";
+              }
             } else {
-              bar.style.display = "none";
+              bar.classList.add("standby-mode");
+              const pfx = document.getElementById("liveStatusPrefix");
+              if (pfx) pfx.innerText = "⚡ SESSION CONTROLLER & QUICK LAUNCH:";
+              const mName = document.getElementById("liveMeetingName");
+              if (mName) mName.innerText = getBestSessionName();
+              const mProf = document.getElementById("liveMeetingProf");
+              if (mProf) mProf.innerText = (selectedViewerMeeting && selectedViewerMeeting.prof) ? selectedViewerMeeting.prof : (activeSession ? activeSession.professor : "--");
+              const mTime = document.getElementById("liveMeetingTime");
+              if (mTime) mTime.innerText = (activeSession && activeSession.time) ? activeSession.time : "On-Demand";
+              const bStat = document.getElementById("liveBotStatusText");
+              if (bStat) {
+                bStat.innerText = "Standby (Ready to connect on-demand)";
+                bStat.style.color = "var(--cyan)";
+              }
             }
           }
         }
@@ -2584,10 +2675,52 @@
     }
 
     function attendLiveMeeting() {
-      if (currentLiveMeeting && currentLiveMeeting.url) {
-        window.open(currentLiveMeeting.url, "_blank");
+      const url = getBestMeetUrl();
+      if (url) {
+        window.open(url, "_blank");
       } else {
         alert("No active Google Meet URL detected.");
+      }
+    }
+
+    function joinActiveOrSelectedSessionPersonal() {
+      const url = getBestMeetUrl();
+      if (url && url !== "https://meet.google.com/") {
+        window.open(url, "_blank");
+      } else {
+        window.open("https://meet.google.com/", "_blank");
+      }
+    }
+
+    async function joinActiveOrSelectedSessionBot() {
+      const name = getBestSessionName();
+      const url = getBestMeetUrl();
+      try {
+        const resp = await fetch("http://localhost:5050/api/meeting/join", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, url })
+        });
+        if (resp.ok) {
+          playJarvisChime();
+          alert("🚀 Launch signal sent to Study Bot for " + name + "!\nConnecting to Google Meet room: " + url);
+          setTimeout(checkLiveMeetingStatus, 1500);
+        } else {
+          alert("Failed to trigger Study Bot join: " + resp.statusText);
+        }
+      } catch (e) {
+        alert("Error launching Study Bot: " + e);
+      }
+    }
+
+    function copyActiveOrSelectedMeetUrl() {
+      const url = getBestMeetUrl();
+      if (url && url !== "https://meet.google.com/") {
+        navigator.clipboard.writeText(url);
+        playJarvisChime();
+        alert("📋 Google Meet URL copied to clipboard:\n" + url);
+      } else {
+        alert("No specific Google Meet link found for this session.");
       }
     }
 

@@ -509,11 +509,33 @@ def process_parsed_announcement(parsed, raw_text, msg_date):
     ]
     is_cancelled = any(kw in check_str for kw in cancel_keywords)
 
+    # Check for exam / micro-interrogation during TD session (user rule: skip TD)
+    is_exam = (
+        parsed.get("category") == "exam" or
+        any(kw in check_str for kw in [
+            "micro-interrogation", "micro interrogation", "micro interogation", "micro-interogation",
+            "micro-interro", "micro interro", "micro-intero", "micro intero",
+            "interrogation", "interogation", "interro", "intero",
+            "examen", "controle", "control", "quiz", "test", "fard", "imti7an"
+        ])
+    )
+    is_td = (
+        parsed.get("session_type") == "TD" or
+        "(td" in subj.lower() or
+        "seance de td" in check_str or
+        "séance de td" in check_str or
+        "pendant la seance de td" in check_str or
+        "pendant la séance de td" in check_str or
+        re.search(r'\btd\b', check_str) is not None
+    )
+
     due_d = msg_date.strftime("%Y-%m-%d")
-    if is_cancelled:
-        res = apply_schedule_cancellation(subject=subj, day_str=day_raw, msg_date=msg_date, notes=notes or raw_text[:80])
+    if is_cancelled or (is_exam and is_td):
+        skip_notes = f"Micro-interro in TD: {notes or raw_text[:80]}" if (is_exam and is_td and not is_cancelled) else (notes or raw_text[:80])
+        res = apply_schedule_cancellation(subject=subj, day_str=day_raw, msg_date=msg_date, notes=skip_notes)
         if res:
-            sync_task_to_dashboard(f"Cancelled Session: {subj}", f"Class cancelled: {notes or raw_text[:100]}", subj, due_d, "low")
+            task_title = f"Skipped TD (Micro-Interro): {subj}" if (is_exam and is_td) else f"Cancelled Session: {subj}"
+            sync_task_to_dashboard(task_title, f"Class skipped/cancelled: {notes or raw_text[:100]}", subj, due_d, "high" if (is_exam and is_td) else "low")
         return res
     else:
         res = apply_schedule_change(subject=subj, day_str=day_raw, time_str=time_raw, meet_url=url_raw, msg_date=msg_date, notes=notes or raw_text[:80])

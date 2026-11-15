@@ -20,6 +20,10 @@ import threading
 from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright
 
+scripts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scripts")
+if scripts_dir not in sys.path:
+    sys.path.insert(0, scripts_dir)
+
 # ── Config helpers ──────────────────────────────────────────────────────────────
 CONFIG_FILE = "config.json"
 
@@ -400,13 +404,65 @@ def join_meeting(meeting, skip_delay=False, class_end=None):
                 except Exception:
                     pass
 
-            join_buttons = page.locator("button:has-text('Ask to join'), button:has-text('Demander à participer'), button:has-text('Join now'), button:has-text('Participer'), button:has-text('Passer ici'), button:has-text('Switch here')")
+            # Check for permission popups or notices (Dismiss / Continue without mic / etc.)
+            try:
+                popups = page.locator("button:has-text('Dismiss'), button:has-text('Ignorer'), button:has-text('Got it'), button:has-text('Compris'), button:has-text('Continue without'), button:has-text('Continuer sans')")
+                for pi in range(popups.count()):
+                    pbtn = popups.nth(pi)
+                    if pbtn.is_visible():
+                        pbtn.click()
+                        time.sleep(1)
+            except Exception:
+                pass
+
+            # Check if Guest Name field exists and fill it
+            try:
+                name_inputs = page.locator("input[placeholder*='name' i], input[placeholder*='nom' i], input[aria-label*='name' i], input[aria-label*='nom' i]")
+                for ni in range(name_inputs.count()):
+                    n_inp = name_inputs.nth(ni)
+                    if n_inp.is_visible():
+                        val = n_inp.input_value()
+                        if not val or val.strip() == "":
+                            print("Filling participant name: Malik Mehdid...")
+                            n_inp.fill("Malik Mehdid")
+                            time.sleep(1)
+                            n_inp.press("Enter")
+                            time.sleep(1)
+            except Exception as e:
+                print(f"Name input check exception: {e}")
+
+            try:
+                page.screenshot(path="current_screen.png")
+            except Exception:
+                pass
+
+            join_buttons = page.locator("button:has-text('Ask to join'), button:has-text('Demander à participer'), button:has-text('Join now'), button:has-text('Participer'), button:has-text('Passer ici'), button:has-text('Switch here'), button[aria-label*='Ask to join' i], button[aria-label*='Demander à participer' i]")
             if join_buttons.count() > 0:
-                try:
-                    join_buttons.first.click()
-                    print("Clicked 'Ask to join' / 'Join now'.")
-                except Exception as e:
-                    print(f"Could not click join button: {e}")
+                clicked = False
+                for j_idx in range(join_buttons.count()):
+                    btn = join_buttons.nth(j_idx)
+                    try:
+                        if btn.is_visible():
+                            btn.click(timeout=6000)
+                            print("Clicked 'Ask to join' / 'Join now'.")
+                            clicked = True
+                            break
+                    except Exception:
+                        try:
+                            btn.click(force=True, timeout=3000)
+                            print("Force-clicked 'Ask to join' / 'Join now'.")
+                            clicked = True
+                            break
+                        except Exception:
+                            try:
+                                page.evaluate("el => el.click()", btn.element_handle())
+                                print("JS clicked 'Ask to join' / 'Join now'.")
+                                clicked = True
+                                break
+                            except Exception:
+                                pass
+                if not clicked:
+                    print("Could not click join button.")
 
             # Wait up to 90 seconds for professor to admit
             check_start = time.time()
