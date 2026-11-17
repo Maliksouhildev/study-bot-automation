@@ -537,6 +537,16 @@ def process_parsed_announcement(parsed, raw_text, msg_date):
             task_title = f"Skipped TD (Micro-Interro): {subj}" if (is_exam and is_td) else f"Cancelled Session: {subj}"
             sync_task_to_dashboard(task_title, f"Class skipped/cancelled: {notes or raw_text[:100]}", subj, due_d, "high" if (is_exam and is_td) else "low")
         return res
+    elif is_exam:
+        # One-off exam / micro-interro announcements must not overwrite recurring weekly class day/time.
+        sync_task_to_dashboard(
+            f"Micro-Interrogation / Exam: {subj}",
+            f"Scheduled on {day_raw or due_d} at {time_raw or 'TBA'}. Notes: {notes or raw_text[:100]}",
+            subj,
+            due_d,
+            "high"
+        )
+        return False
     else:
         res = apply_schedule_change(subject=subj, day_str=day_raw, time_str=time_raw, meet_url=url_raw, msg_date=msg_date, notes=notes or raw_text[:80])
         if res:
@@ -717,7 +727,7 @@ async def initial_scan(client, entity):
                 "reporté", "reporte", "annulé", "annule", "bedlo", "changement", "décalé", "pas de"
             ])
             if has_meet or has_reschedule:
-                parsed = parse_with_n8n(m.text)
+                parsed = parse_with_n8n(m.text, msg_date=m.date)
                 if parsed.get("is_schedule_update") and parsed.get("subject") and parsed.get("subject") != "unknown":
                     notes = parsed.get("notes", m.text[:80])
                     print(f" -> [{m.date.date()}] Discussion: '{notes}'")

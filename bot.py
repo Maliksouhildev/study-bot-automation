@@ -269,7 +269,129 @@ def find_next_different_class(current_meeting, config, ref_datetime=None):
         return upcoming[0][1], upcoming[0][0], upcoming[0][2]
     return None
 
-def join_meeting(meeting, skip_delay=False, class_end=None):
+def _ensure_mic_cam_off(page):
+    """Safely ensure mic & camera are turned off without blindly toggling already-off controls."""
+    try:
+        toggles = page.locator(
+            "div[role='button'][aria-label*='micro' i], "
+            "div[role='button'][aria-label*='caméra' i], "
+            "div[role='button'][aria-label*='camera' i], "
+            "button[aria-label*='micro' i], "
+            "button[aria-label*='caméra' i], "
+            "button[aria-label*='camera' i]"
+        )
+        for i in range(toggles.count()):
+            try:
+                btn = toggles.nth(i)
+                if not btn.is_visible():
+                    continue
+                aria = (btn.get_attribute("aria-label") or "").lower()
+                if any(w in aria for w in ["turn off", "désactiver", "couper"]):
+                    btn.click(timeout=3000)
+                    time.sleep(0.3)
+            except Exception:
+                pass
+    except Exception as e:
+        print(f"Warning during mic/cam toggle: {e}")
+
+
+def _check_telegram_chat_signal(since_dt, seen_ids, meeting):
+    """
+    Poll messages_memory.json (updated in real time by telegram_schedule_watcher.py)
+    for live group-chat signals while waiting for the professor.
+    Returns (signal_type, message_text) where signal_type is:
+      'PROF_ARRIVED' | 'PROF_NOT_YET' | 'CANCELLED' | None
+    """
+    mem_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "messages_memory.json")
+    if not os.path.exists(mem_path):
+        return None, None
+
+    try:
+        with open(mem_path, "r", encoding="utf-8-sig") as f:
+            mem_data = json.load(f)
+    except Exception:
+        return None, None
+
+    m_name_lower = meeting.get("name", "").lower()
+    prof_lower = clean_prof_name(meeting.get("professor", ""))
+
+    # Quick alias map to ignore messages explicitly talking about a DIFFERENT subject
+    other_subject_keywords = {
+        "systeme asservi": "control systems",
+        "asservi": "control systems",
+        "robotique": "robotique",
+        "machine": "electrical machines",
+        "puissance": "power electronics",
+        "mokhnache": "power electronics",
+        "calculateur": "embedded computer",
+        "embedded": "embedded computer",
+        "embarque": "embedded computer",
+        "merabti": "embedded computer",
+        "capteur": "industrial sensors",
+        "hafs": "industrial sensors",
+        "management": "innovation management",
+        "babes": "innovation management",
+        "automate": "industrial programmable automation",
+        "righi": "industrial programmable automation",
+    }
+
+    arrived_kws = [
+        "ja lprof", "ja prof", "aw ja", "rahou ja", "raho ja", "rahu ja",
+        "dkhl", "dkhel", "dkhoul", "tdkhlo", "dkholo", "dakhl", "dakhel",
+        "kan tdkhlo", "t9dro tdkhlo", "ta9dro tdkhlo", "prof est la", "prof est là",
+        "il est la", "il est là", "accepta", "acceptakom", "yaccepti",
+        "bdat", "bdina", "bdaw", "dkhlna", "dkhalna", "dkhelna",
+        "c bon", "c'est bon", "prof arrived", "prof joined", "prof is here",
+        "راهو جا", "جا البروف", "دخل", "تقدرو تدخلو"
+    ]
+    not_yet_kws = [
+        "mazal", "mezel", "mjach", "majach", "ma ja", "madkhlch",
+        "ma dkhlch", "ma bda", "mabdach", "pas encore", "not yet",
+        "pour moi no", "mazalou"
+    ]
+
+    latest_signal = (None, None)
+    msgs = sorted(mem_data.get("messages", []), key=lambda x: x.get("date_alg", ""))
+    for msg in msgs:
+        mid = msg.get("id")
+        if mid in seen_ids:
+            continue
+        date_alg_str = msg.get("date_alg") or ""
+        if len(date_alg_str) < 19:
+            continue
+        try:
+            msg_dt = datetime.strptime(date_alg_str[:19], "%Y-%m-%d %H:%M:%S")
+        except Exception:
+            continue
+        if msg_dt < since_dt:
+            continue
+
+        seen_ids.add(mid)
+        raw_text = (msg.get("raw_text") or "").strip()
+        txt_lower = raw_text.lower()
+
+        # Skip if explicitly naming a different subject
+        mentions_other = False
+        for kw, subj_tag in other_subject_keywords.items():
+            if kw in txt_lower and subj_tag not in m_name_lower and (not prof_lower or prof_lower not in kw):
+                mentions_other = True
+                break
+        if mentions_other:
+            continue
+
+        if msg.get("category") == "cancellation" and msg.get("target_date") == datetime.now().strftime("%Y-%m-%d"):
+            return "CANCELLED", raw_text
+
+        is_negated = any(nk in txt_lower for nk in not_yet_kws) or bool(re.search(r'\b(no|nn|non)\b', txt_lower))
+        if is_negated:
+            latest_signal = ("PROF_NOT_YET", raw_text)
+        elif any(ak in txt_lower for ak in arrived_kws):
+            latest_signal = ("PROF_ARRIVED", raw_text)
+
+    return latest_signal
+
+
+def join_meeting(meeting, skip_delay=False, class_end=None, class_start=None, skip_preflight=False):
     current_config = load_config()
     if current_config.get("enabled", True) is not True:
         time.sleep(3)  # watcher may have been mid-write; confirm before skipping
@@ -290,19 +412,20 @@ def join_meeting(meeting, skip_delay=False, class_end=None):
         return
 
     # ── Mandatory Telegram Pre-Flight Verification ──────────────────────────
-    try:
-        from telegram_preflight import run_telegram_preflight_check
-        chk = run_telegram_preflight_check(meeting)
-        if chk.get("action") == "CANCEL":
-            print(f"[{datetime.now()}] 🚫 [TELEGRAM PRE-FLIGHT] Aborting {meeting['name']}: cancelled per Telegram ({chk.get('reason')}).")
-            return
-        elif chk.get("action") == "RESCHEDULE":
-            print(f"[{datetime.now()}] ⏰ [TELEGRAM PRE-FLIGHT] Aborting current join for {meeting['name']}: rescheduled to {chk.get('new_time')}.")
-            return
-        elif chk.get("url_updated"):
-            meeting["url"] = chk.get("url")
-    except Exception as e:
-        print(f"[{datetime.now()}] ⚠️ Telegram pre-flight check exception: {e}")
+    if not skip_preflight:
+        try:
+            from telegram_preflight import run_telegram_preflight_check
+            chk = run_telegram_preflight_check(meeting)
+            if chk.get("action") == "CANCEL":
+                print(f"[{datetime.now()}] 🚫 [TELEGRAM PRE-FLIGHT] Aborting {meeting['name']}: cancelled per Telegram ({chk.get('reason')}).")
+                return
+            elif chk.get("action") == "RESCHEDULE":
+                print(f"[{datetime.now()}] ⏰ [TELEGRAM PRE-FLIGHT] Aborting current join for {meeting['name']}: rescheduled to {chk.get('new_time')}.")
+                return
+            elif chk.get("url_updated"):
+                meeting["url"] = chk.get("url")
+        except Exception as e:
+            print(f"[{datetime.now()}] ⚠️ Telegram pre-flight check exception: {e}")
 
     print(f"[{datetime.now()}] Starting preparation for {meeting['name']}")
     
@@ -360,49 +483,58 @@ def join_meeting(meeting, skip_delay=False, class_end=None):
         
         # 1. Guarantee Mic & Camera are Disabled BEFORE entering
         print("Disabling camera and microphone on pre-join screen...")
-        try:
-            page.keyboard.press("Control+d")
-            time.sleep(1)
-            page.keyboard.press("Control+e")
-            time.sleep(1)
-            # Extra safeguard: click toggle buttons if visible
-            toggles = page.locator("div[role='button'][aria-label*='micro'], div[role='button'][aria-label*='Micro'], div[role='button'][aria-label*='caméra'], div[role='button'][aria-label*='Camera']")
-            for i in range(toggles.count()):
-                try:
-                    aria = toggles.nth(i).get_attribute("aria-label") or ""
-                    # Click only if it says 'turn off' or 'désactiver'
-                    if any(w in aria.lower() for w in ["turn off", "désactiver", "couper"]):
-                        toggles.nth(i).click()
-                except Exception:
-                    pass
-        except Exception as e:
-            print(f"Warning during mic/cam toggle: {e}")
+        _ensure_mic_cam_off(page)
 
-        # 2. Retry loop on 'Ask to join' (up to 5 attempts)
+        # 2. Continuous retry loop on 'Ask to join' until admitted, cancelled, or max_join_wait_minutes (~30m) elapsed
+        max_wait_min = current_config.get("settings", {}).get("max_join_wait_minutes", 30)
+        base_start = class_start or datetime.now()
+        join_deadline = base_start + timedelta(minutes=max_wait_min)
+        if datetime.now() + timedelta(minutes=8) > join_deadline:
+            join_deadline = datetime.now() + timedelta(minutes=10)
+        if class_end:
+            join_deadline = min(join_deadline, class_end - timedelta(minutes=5))
+
+        watch_since_dt = base_start - timedelta(minutes=5)
+        seen_chat_ids = set()
         admitted = False
-        for attempt in range(1, 6):
-            print(f"\n[Attempt {attempt}/5] Requesting to enter meeting...")
-            
-            # Check if link was updated in config by Telegram watcher while we were waiting
-            updated_cfg = load_config()
-            for m in updated_cfg.get("meetings", []):
-                if m["name"].lower() == meeting["name"].lower() and m["url"] != meeting["url"]:
-                    print(f"🔄 Link updated via Telegram during wait! Updating target to: {m['url']}")
-                    meeting["url"] = m["url"]
-                    break
+        aborted_by_cancel = False
+        attempt = 0
 
-            # If page is not on target meeting room (e.g. after clicking Cancel which redirects to home), navigate to meeting URL
+        print(f"[{datetime.now()}] 🔄 Will keep requesting to join until admitted or {join_deadline.strftime('%H:%M:%S')} (watching Telegram group chat).")
+
+        while datetime.now() < join_deadline:
+            attempt += 1
+            print(f"\n[{datetime.now().strftime('%H:%M:%S')}] [Attempt {attempt}] Requesting to enter meeting (until {join_deadline.strftime('%H:%M')})...")
+
+            # Check config.json for cancellation, disable, or Meet link update
+            updated_cfg = load_config()
+            if updated_cfg.get("enabled", True) is False:
+                print(f"[{datetime.now()}] ⏸️ Study Bot disabled during wait loop. Stopping.")
+                aborted_by_cancel = True
+                break
+
+            url_changed = False
+            for m in updated_cfg.get("meetings", []):
+                if m["name"].lower() == meeting["name"].lower():
+                    if today_str in m.get("cancelled_dates", []):
+                        print(f"[{datetime.now()}] 🚫 {meeting['name']} marked cancelled in config during wait. Stopping.")
+                        aborted_by_cancel = True
+                        break
+                    if m["url"] != meeting["url"]:
+                        print(f"🔄 Link updated via Telegram during wait! Updating target to: {m['url']}")
+                        meeting["url"] = m["url"]
+                        url_changed = True
+                    break
+            if aborted_by_cancel:
+                break
+
+            # Navigate if URL changed or page left the meeting room (e.g. after Cancel/home redirect)
             target_meet_id = meeting["url"].split("/")[-1].split("?")[0]
-            if target_meet_id not in (page.url or ""):
+            if url_changed or target_meet_id not in (page.url or ""):
                 print(f"Navigating to {meeting['url']}...")
                 page.goto(meeting["url"])
-                time.sleep(6)
-                try:
-                    page.keyboard.press("Control+d")
-                    time.sleep(0.5)
-                    page.keyboard.press("Control+e")
-                except Exception:
-                    pass
+                time.sleep(5)
+                _ensure_mic_cam_off(page)
 
             # Check for permission popups or notices (Dismiss / Continue without mic / etc.)
             try:
@@ -411,7 +543,7 @@ def join_meeting(meeting, skip_delay=False, class_end=None):
                     pbtn = popups.nth(pi)
                     if pbtn.is_visible():
                         pbtn.click()
-                        time.sleep(1)
+                        time.sleep(0.5)
             except Exception:
                 pass
 
@@ -464,38 +596,90 @@ def join_meeting(meeting, skip_delay=False, class_end=None):
                 if not clicked:
                     print("Could not click join button.")
 
-            # Wait up to 90 seconds for professor to admit
+            # Poll up to 75 seconds for professor to admit (also watching Telegram group chat every 3s)
             check_start = time.time()
-            while time.time() - check_start < 90:
+            prof_arrived_wake = False
+            while time.time() - check_start < 75 and datetime.now() < join_deadline:
                 # If leave call button exists, we are IN!
                 if page.locator("button[aria-label*='Leave call'], button[aria-label*='Quitter l’appel'], button[aria-label*='Quitter']").count() > 0:
                     admitted = True
                     break
-                if page.locator("text='You can\\'t join this call', text='Votre demande a été refusée'").count() > 0:
-                    print("Join request explicitly refused by host.")
+                if page.locator("text='You can\\'t join this call', text='Votre demande a été refusée', text='No one responded'").count() > 0:
+                    print("Join request refused or timed out on Meet side.")
                     break
-                time.sleep(4)
 
-            if admitted:
-                print("🎉 Successfully admitted into the meeting!")
+                sig, sig_txt = _check_telegram_chat_signal(watch_since_dt, seen_chat_ids, meeting)
+                if sig == "CANCELLED":
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚫 [TELEGRAM SIGNAL] Class cancelled in chat: {sig_txt[:100]}")
+                    aborted_by_cancel = True
+                    break
+                elif sig == "PROF_NOT_YET":
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 💬 [TELEGRAM CHAT] Prof not here yet: \"{sig_txt[:90]}\" — continuing loop.")
+                elif sig == "PROF_ARRIVED":
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚀 [TELEGRAM CHAT] Prof arrived / class started: \"{sig_txt[:90]}\"!")
+                    if time.time() - check_start >= 12:
+                        print("Refreshing 'Ask to join' request immediately so host sees fresh knock...")
+                        prof_arrived_wake = True
+                        break
+
+                time.sleep(3)
+
+            if admitted or aborted_by_cancel:
+                if admitted:
+                    print("🎉 Successfully admitted into the meeting!")
                 break
-            else:
-                print(f"Attempt {attempt} timed out (professor has not admitted yet).")
-                cancel_btn = page.locator("button:has-text('Cancel'), button:has-text('Annuler')")
-                if cancel_btn.count() > 0:
-                    try: cancel_btn.first.click()
-                    except Exception: pass
-                
-                if attempt < 5:
-                    print("Waiting 60 seconds before next attempt (monitoring group chat in background)...")
-                    time.sleep(60)
+
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] Attempt {attempt} not admitted yet.")
+            cancel_btn = page.locator("button:has-text('Cancel'), button:has-text('Annuler')")
+            if cancel_btn.count() > 0:
+                try:
+                    cancel_btn.first.click()
+                    time.sleep(1)
+                except Exception:
+                    pass
+
+            if prof_arrived_wake or datetime.now() >= join_deadline:
+                continue
+
+            # Cooldown up to 35s between attempts, waking immediately on Telegram "prof arrived" or URL update
+            cooldown_end = min(datetime.now() + timedelta(seconds=35), join_deadline)
+            print(f"Waiting up to 35s before next attempt (monitoring Telegram group chat until {join_deadline.strftime('%H:%M')})...")
+            while datetime.now() < cooldown_end:
+                sig, sig_txt = _check_telegram_chat_signal(watch_since_dt, seen_chat_ids, meeting)
+                if sig == "CANCELLED":
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚫 [TELEGRAM SIGNAL] Class cancelled in chat: {sig_txt[:100]}")
+                    aborted_by_cancel = True
+                    break
+                elif sig == "PROF_NOT_YET":
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 💬 [TELEGRAM CHAT] Prof still not here: \"{sig_txt[:90]}\" — keeping wait loop alive.")
+                elif sig == "PROF_ARRIVED":
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚀 [TELEGRAM CHAT] Prof arrived: \"{sig_txt[:90]}\" -> Rejoining immediately!")
+                    break
+
+                # Also wake early if config.json got a new Meet URL or cancellation
+                cfg_tick = load_config()
+                wake_for_cfg = False
+                for m in cfg_tick.get("meetings", []):
+                    if m["name"].lower() == meeting["name"].lower():
+                        if today_str in m.get("cancelled_dates", []):
+                            aborted_by_cancel = True
+                            wake_for_cfg = True
+                        elif m["url"] != meeting["url"]:
+                            wake_for_cfg = True
+                        break
+                if wake_for_cfg:
+                    break
+                time.sleep(3)
+
+            if aborted_by_cancel:
+                break
 
         if not admitted:
-            print("\n❌ Could not join after 5 attempts. Professor did not accept. Waiting for next scheduled class.")
+            if aborted_by_cancel:
+                print("\n🚫 Session aborted due to cancellation/disable.")
+            else:
+                print(f"\n❌ Could not join by {join_deadline.strftime('%H:%M')} (~{max_wait_min}m wait window elapsed). Waiting for next scheduled class.")
             browser.close()
-            key = (meeting["name"].lower(), datetime.now().date())
-            with _launch_lock:
-                _launched.discard(key)
             return
 
         # 3. Start Video & Dual Audio Recording
@@ -859,11 +1043,11 @@ def launch_meeting(meeting, skip_delay=False):
         if key in _launched:
             return
         _launched.add(key)
-    _, end = _class_window(meeting)
+    start, end = _class_window(meeting)
 
     def _runner():
         try:
-            join_meeting(meeting, skip_delay, end)
+            join_meeting(meeting, skip_delay, end, class_start=start, skip_preflight=True)
         except BaseException:
             import traceback
             print(f"[{datetime.now()}] ❌ Session thread for {meeting['name']} crashed:")

@@ -142,9 +142,10 @@ def run_telegram_preflight_check(meeting, config_file="config.json"):
         print(f"[PRE-FLIGHT] Notice: {SESSION_NAME}.session not found, skipping Telegram check.")
         return {"action": "PROCEED"}
 
-    # Use unique temp session file copy to avoid SQLite database lock contention with live watcher
+    # Use unique temp session file copy in scripts/ to avoid SQLite lock contention with live watcher
     temp_session_name = f"preflight_temp_{os.getpid()}"
-    temp_session_file = os.path.join(base_dir, f"{temp_session_name}.session")
+    temp_session_base = os.path.join(base_dir, temp_session_name)
+    temp_session_file = f"{temp_session_base}.session"
     try:
         shutil.copy(session_src, temp_session_file)
     except Exception as e:
@@ -157,32 +158,38 @@ def run_telegram_preflight_check(meeting, config_file="config.json"):
     today_alg = now_alg.date()
 
     all_messages = []
+    client = TelegramClient(temp_session_base, API_ID, API_HASH)
     try:
-        with TelegramClient(temp_session_name, API_ID, API_HASH) as client:
-            if not client.is_user_authorized():
-                print("[PRE-FLIGHT] Client not authorized.")
-                return {"action": "PROCEED"}
+        # Use connect() rather than `with client:` so an unauthorized session never blocks on stdin input().
+        client.connect()
+        if not client.is_user_authorized():
+            print("[PRE-FLIGHT] Client not authorized.")
+            return {"action": "PROCEED"}
 
-            for tid in [TOPIC_IMPORTANT, TOPIC_DISCUSSION, TOPIC_MEET]:
-                try:
-                    msgs = client.get_messages(GROUP_ID, limit=35, reply_to=tid)
-                    for m in msgs:
-                        if m.text:
-                            m_alg = m.date.astimezone(ALG_TZ)
-                            if m_alg.date() == today_alg:
-                                all_messages.append((m_alg, tid, m.text.strip()))
-                except Exception as ex:
-                    print(f"[PRE-FLIGHT] Warning reading topic {tid}: {ex}")
+        for tid in [TOPIC_IMPORTANT, TOPIC_DISCUSSION, TOPIC_MEET]:
+            try:
+                msgs = client.get_messages(GROUP_ID, limit=35, reply_to=tid)
+                for m in msgs:
+                    if m.text:
+                        m_alg = m.date.astimezone(ALG_TZ)
+                        if m_alg.date() == today_alg:
+                            all_messages.append((m_alg, tid, m.text.strip()))
+            except Exception as ex:
+                print(f"[PRE-FLIGHT] Warning reading topic {tid}: {ex}")
     except Exception as e:
         print(f"[PRE-FLIGHT] Telegram connection error ({e}), proceeding with normal schedule.")
         return {"action": "PROCEED"}
     finally:
-        # Clean up temporary session file
         try:
-            if os.path.exists(temp_session_file):
-                os.remove(temp_session_file)
+            client.disconnect()
         except Exception:
             pass
+        for stale_file in [temp_session_file, os.path.join(root_dir, f"{temp_session_name}.session")]:
+            try:
+                if os.path.exists(stale_file):
+                    os.remove(stale_file)
+            except Exception:
+                pass
 
     if not all_messages:
         print(f"[{now_alg.strftime('%H:%M:%S')}] [PRE-FLIGHT] Telegram checked: 0 messages posted today. Proceeding.")
